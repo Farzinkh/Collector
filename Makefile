@@ -4,5 +4,5 @@
 #
 
 PROJECT_NAME := client
-
+EXTRA_COMPONENT_DIRS := $(IDF_WHO_PATH) #add for esp lib 
 include $(IDF_PATH)/make/project.mk
