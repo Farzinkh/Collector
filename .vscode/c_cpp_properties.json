@@ -1,0 +1,33 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${env:IDF_PATH}/components/**",
+                "${env:IDF_LIB_PATH}/**}",
+                "/home/farzin/esp/esp32-camera/**",
+                "${workspaceFolder}/main/**",
+                "${workspaceFolder}/components/**",
+                "${workspaceFolder}/build/config/*",
+                "${env:IDF_PATH}/examples/common_components/protocol_examples_common/**"
+            ],
+            "browse": {
+                "path": [
+                    "${env:IDF_PATH}/components",
+                    "${env:IDF_LIB_PATH}",
+                    "/home/farzin/esp/esp32-camera",
+                    "${workspaceFolder}/main",
+                    "${workspaceFolder}/components",
+                    "${workspaceFolder}/build/config",
+                    "${env:IDF_PATH}/examples/common_components/protocol_examples_common"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compilerPath": "/home/farzin/apps/espressiftools/tools/xtensa-esp32-elf/esp-2019r2-8.2.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

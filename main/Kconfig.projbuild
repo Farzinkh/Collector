@@ -1,4 +1,4 @@
-menu "ADC Configuration"
+menu "ADC CONFIG"
 
     choice ADC2_CHANNEL
         bool "ADC2 Channel Num"
@@ -43,7 +43,7 @@ menu "ADC Configuration"
 
 endmenu
 
-menu "SD Card menu"
+menu "SD CARD CONFIG"
 
     config FORMAT_IF_MOUNT_FAILED
         bool "Format the card if mount failed"
@@ -59,13 +59,13 @@ menu "SD Card menu"
             MOSI OR DI OR CMD.
 
         config ESP32CAM
-            bool "GPIO15"
+            bool "ESP32CAM GPIO15"
         config ESP32
-            bool "GPIO13"
+            bool "ESP32 GPIO13"
     endchoice
 
     config MOSI
-        int
+        int 
         default 15 if ESP32CAM
         default 2 if ESP32  
         
@@ -76,13 +76,13 @@ menu "SD Card menu"
             MISO OR DO OR DATA0.
 
         config ESP32CAM
-            bool "GPIO2"
+            bool "ESP32CAM GPIO2"
         config ESP32
-            bool "GPIO4"
+            bool "ESP32 GPIO4"
     endchoice
     
     config MISO
-        int
+        int 
         default 2 if ESP32CAM
         default 4 if ESP32   
         
@@ -93,13 +93,13 @@ menu "SD Card menu"
             CLK OR SCLK.
 
         config ESP32CAM
-            bool "GPIO14"
+            bool "ESP32CAM GPIO14"
         config ESP32
-            bool "GPIO14"
+            bool "ESP32 GPIO14"
     endchoice
         
     config CLK
-        int
+        int 
         default 14 if ESP32CAM
         default 14 if ESP32   
         
@@ -110,14 +110,114 @@ menu "SD Card menu"
             CS OR DATA3.
 
         config ESP32CAM
-            bool "GPIO13"
+            bool "ESP32CAM GPIO13"
         config ESP32
-            bool "GPIO15"
+            bool "ESP32 GPIO15"
     endchoice
 
     config CS
-        int
+        int 
         default 13 if ESP32CAM
         default 15 if ESP32   
+endmenu        
+
+menu "WIFI CONFIG"
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use min length is 8 .
+    config ESP_WIFI_CHANNEL
+        int "WiFi Channel"
+        range 1 13
+        default 1
+        help
+            WiFi channel (network channel) for the example to use.
+
+    config ESP_MAX_STA_CONN
+        int "Maximal STA connections"
+        default 4
+        help
+            Max number of the STA connects to AP.
+endmenu            
+            
+menu "CAMERA CONFIG"
+    choice XCLK_FREQ
+        bool "Frequency"
+        default 20MHz
+        help
+            frequency 10MHz or 20MHz.
+
+        config 20MHz
+            bool "20MHz"
+        config 10MHz
+            bool "10MHz"
+    endchoice
+
+    config XCLK_FREQ
+        int 
+        default 20000000 if 20MHz
+        default 10000000 if 10MHz
         
+    choice FRAMESIZE
+        bool "Resolution"
+        default QVGA
+        help
+            Do not use sizes above QVGA when not JPEG.
+
+        config QVGA
+            bool "QVGA 320x240"
+        config CIF
+            bool "CIF 400x296"
+        config HVGA
+            bool "HVGA 480x320"
+        config VGA
+            bool "VGA 640x480"  
+        config SVGA
+            bool "SVGA 800x600"    
+        config HD
+            bool "HD 1280x720" 
+        config UXGA
+            bool "UXGA 1600x1200" 
+    endchoice
+
+    config FRAMESIZE
+        int 
+        default 5 if QVGA
+        default 6 if CIF 
+        default 7 if HVGA
+        default 8 if VGA 
+        default 9 if SVGA
+        default 11 if HD 
+        default 13 if UXGA
+        
+    choice PIXFORMAT
+        bool "Image format"
+        default JPEG
+        help
+            image format to save.
+
+        config JPEG
+            bool "JPEG"
+        config GRAYSCALE
+            bool "GRAYSCALE"
+        config RAW
+            bool "RAW"
+        config RGB565
+            bool "RGB565"    
+    endchoice
+
+    config PIXFORMAT
+        int 
+        default 3 if JPEG
+        default 2 if GRAYSCALE    
+        default 5 if RAW
+        default 1 if RGB565  
+            
 endmenu

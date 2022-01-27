@@ -1,0 +1,193 @@
+Crashed task handle: 0x3ffbd10c, name: 'main', GDB name: 'process 1073467660'
+
+================== CURRENT THREAD REGISTERS ===================
+exccause       0x1c (LoadProhibitedCause)
+excvaddr       0x4
+epc1           0x4015346a
+epc2           0x0
+epc3           0x0
+epc4           0x0
+epc5           0x0
+epc6           0x0
+epc7           0x0
+eps2           0x60220
+eps3           0x0
+eps4           0x0
+eps5           0x0
+eps6           0x0
+eps7           0x400db45f
+pc             0x400deb1b	0x400deb1b <app_main+487>
+lbeg           0x4008cacd	1074318029
+lend           0x4008cadd	1074318045
+lcount         0xfffffffd	4294967293
+sar            0x4	4
+ps             0x60420	394272
+threadptr      <unavailable>
+br             <unavailable>
+scompare1      <unavailable>
+acclo          <unavailable>
+acchi          <unavailable>
+m0             <unavailable>
+m1             <unavailable>
+m2             <unavailable>
+m3             <unavailable>
+expstate       <unavailable>
+f64r_lo        <unavailable>
+f64r_hi        <unavailable>
+f64s           <unavailable>
+fcr            <unavailable>
+fsr            <unavailable>
+a0             0x80156dc6	-2146079290
+a1             0x3ffbcfb0	1073467312
+a2             0x3f40a5e0	1061201376
+a3             0x0	0
+a4             0x1	1
+a5             0x3ffbbb54	1073462100
+a6             0x3ffb6460	1073439840
+a7             0x1	1
+a8             0x800deb1b	-2146571493
+a9             0x3ffbcf90	1073467280
+a10            0x2976	10614
+a11            0x3f40a5e0	1061201376
+a12            0x3f40aa7c	1061202556
+a13            0x19d6	6614
+a14            0x3f40a5e0	1061201376
+a15            0x25800	153600
+
+==================== CURRENT THREAD STACK =====================
+#0  0x400deb1b in app_main () at /home/farzin/project/espresif/esp32cam/Tower_project/Client/main/main.c:317
+#1  0x40156dc6 in main_task (args=<optimized out>) at /home/farzin/esp/esp-idf/components/freertos/port/port_common.c:133
+#2  0x400938d8 in vPortTaskWrapper (pxCode=0x40156d1c <main_task>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+======================== THREADS INFO =========================
+  Id   Target Id         Frame 
+* 1    process 1073467660 0x400deb1b in app_main () at /home/farzin/project/espresif/esp32cam/Tower_project/Client/main/main.c:317
+  2    process 1073470316 0x4015346a in esp_pm_impl_waiti () at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:183
+  3    process 1073472972 0x4015346a in esp_pm_impl_waiti () at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:183
+  4    process 1073547328 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  5    process 1073475372 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  6    process 1073412840 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  7    process 1073413452 0x400883f8 in esp_crosscore_int_send_yield (core_id=1) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+  8    process 1073462656 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  9    process 1073551388 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  10   process 1073561460 0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+  11   process 1073462092 0x4000bff0 in ?? ()
+
+==================== THREAD 1 (TCB: 0x3ffbd10c, name: 'main') =====================
+#0  0x400deb1b in app_main () at /home/farzin/project/espresif/esp32cam/Tower_project/Client/main/main.c:317
+#1  0x40156dc6 in main_task (args=<optimized out>) at /home/farzin/esp/esp-idf/components/freertos/port/port_common.c:133
+#2  0x400938d8 in vPortTaskWrapper (pxCode=0x40156d1c <main_task>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 2 (TCB: 0x3ffbdb6c, name: 'IDLE') =====================
+#0  0x4015346a in esp_pm_impl_waiti () at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:183
+#1  0x400ddead in esp_vApplicationIdleHook () at /home/farzin/esp/esp-idf/components/esp_common/src/freertos_hooks.c:63
+#2  0x400913a0 in prvIdleTask (pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/tasks.c:3839
+#3  0x400938d8 in vPortTaskWrapper (pxCode=0x40091394 <prvIdleTask>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 3 (TCB: 0x3ffbe5cc, name: 'IDLE') =====================
+#0  0x4015346a in esp_pm_impl_waiti () at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:183
+#1  0x400ddead in esp_vApplicationIdleHook () at /home/farzin/esp/esp-idf/components/esp_common/src/freertos_hooks.c:63
+#2  0x400913a0 in prvIdleTask (pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/tasks.c:3839
+#3  0x400938d8 in vPortTaskWrapper (pxCode=0x40091394 <prvIdleTask>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 4 (TCB: 0x3ffd0840, name: 'tiT') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40090c4d in xQueueReceive (xQueue=0x3ffcf964, pvBuffer=0x3ffd0780, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x4010070c in sys_arch_mbox_fetch (mbox=<optimized out>, msg=0x3ffd0780, timeout=500) at /home/farzin/esp/esp-idf/components/lwip/port/esp32/freertos/sys_arch.c:325
+#4  0x400ef717 in tcpip_timeouts_mbox_fetch (mbox=0x3ffb6cb4 <tcpip_mbox>, msg=0x3ffd0780) at /home/farzin/esp/esp-idf/components/lwip/lwip/src/api/tcpip.c:110
+#5  0x400ef7d3 in tcpip_thread (arg=0x0) at /home/farzin/esp/esp-idf/components/lwip/lwip/src/api/tcpip.c:148
+#6  0x400938d8 in vPortTaskWrapper (pxCode=0x400ef7b8 <tcpip_thread>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 5 (TCB: 0x3ffbef2c, name: 'Tmr Svc') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40093636 in prvProcessTimerOrBlockTask (xNextExpireTime=<optimized out>, xListWasEmpty=1) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x40093773 in prvTimerTask (pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/timers.c:555
+#4  0x400938d8 in vPortTaskWrapper (pxCode=0x40093764 <prvTimerTask>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 6 (TCB: 0x3ffafae8, name: 'ipc0') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40090dd1 in xQueueSemaphoreTake (xQueue=0x3ffaf68c, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x40085b47 in ipc_task (arg=0x0) at /home/farzin/esp/esp-idf/components/esp_ipc/ipc.c:51
+#4  0x400938d8 in vPortTaskWrapper (pxCode=0x40085b18 <ipc_task>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 7 (TCB: 0x3ffafd4c, name: 'ipc1') =====================
+#0  0x400883f8 in esp_crosscore_int_send_yield (core_id=1) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#1  0x40090dd1 in xQueueSemaphoreTake (xQueue=0x3ffafcf4, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#2  0x40085b47 in ipc_task (arg=0x1) at /home/farzin/esp/esp-idf/components/esp_ipc/ipc.c:51
+#3  0x400938d8 in vPortTaskWrapper (pxCode=0x40085b18 <ipc_task>, pvParameters=0x1) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 8 (TCB: 0x3ffbbd80, name: 'cam_task') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40090c4d in xQueueReceive (xQueue=0x3ffbbca8, pvBuffer=0x3ffcf3d4, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x400df81e in cam_task (arg=<optimized out>) at /home/farzin/esp/esp32-camera/driver/cam_hal.c:111
+#4  0x400938d8 in vPortTaskWrapper (pxCode=0x400df7e8 <cam_task>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 9 (TCB: 0x3ffd181c, name: 'sys_evt') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40090c4d in xQueueReceive (xQueue=0x3ffd0a68, pvBuffer=0x3ffd1730, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x4015633d in esp_event_loop_run (event_loop=0x3ffd0a4c, ticks_to_run=4294967295) at /home/farzin/esp/esp-idf/components/esp_event/esp_event.c:624
+#4  0x40156354 in esp_event_loop_run_task (args=0x3ffd0a4c) at /home/farzin/esp/esp-idf/components/esp_event/esp_event.c:115
+#5  0x400938d8 in vPortTaskWrapper (pxCode=0x40156348 <esp_event_loop_run_task>, pvParameters=0x3ffd0a4c) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 10 (TCB: 0x3ffd3f74, name: 'wifi') =====================
+#0  0x4008838a in esp_crosscore_int_send (core_id=<optimized out>, reason_mask=<optimized out>) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:106
+#1  0x400883f8 in esp_crosscore_int_send_yield (core_id=0) at /home/farzin/esp/esp-idf/components/esp32/crosscore_int.c:112
+#2  0x40090c4d in xQueueReceive (xQueue=0x3ffd1e80, pvBuffer=0x3ffd3eb0, xTicksToWait=<optimized out>) at /home/farzin/esp/esp-idf/components/hal/esp32/include/hal/cpu_ll.h:39
+#3  0x400edbb4 in queue_recv_wrapper (queue=0x3ffd1e80, item=0x3ffd3eb0, block_time_tick=4294967295) at /home/farzin/esp/esp-idf/components/esp_wifi/esp32/esp_adapter.c:372
+#4  0x4009a460 in ppTask () at /home/farzin/esp/esp-idf/components/esp_common/src/freertos_hooks.c:39
+#5  0x400938d8 in vPortTaskWrapper (pxCode=0x4009a434 <ppTask>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+==================== THREAD 11 (TCB: 0x3ffbbb4c, name: 'esp_timer') =====================
+#0  0x4000bff0 in ?? ()
+#1  0x40093b98 in vPortExitCritical (mux=<optimized out>) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:473
+#2  0x40092b02 in ulTaskNotifyTake (xClearCountOnExit=1, xTicksToWait=4294967295) at /home/farzin/esp/esp-idf/components/freertos/tasks.c:5203
+#3  0x400de074 in timer_task (arg=0x0) at /home/farzin/esp/esp-idf/components/esp_timer/src/esp_timer.c:347
+#4  0x400938d8 in vPortTaskWrapper (pxCode=0x400de068 <timer_task>, pvParameters=0x0) at /home/farzin/esp/esp-idf/components/freertos/port/xtensa/port.c:168
+
+
+======================= ALL MEMORY REGIONS ========================
+Name   Address   Size   Attrs
+.rtc.text 0x400c0000 0x0 RW  
+.rtc.dummy 0x3ff80000 0x0 RW  
+.rtc.force_fast 0x3ff80000 0x0 RW  
+.rtc.data 0x50000000 0x10 RW A
+.rtc_noinit 0x50000010 0x0 RW  
+.rtc.force_slow 0x50000010 0x0 RW  
+.iram0.vectors 0x40080000 0x403 R XA
+.iram0.text 0x40080404 0x1e0ff R XA
+.dram0.data 0x3ffb0000 0x5c6c RW A
+.noinit 0x3ffb5c6c 0x0 RW  
+.ext_ram.bss 0x3f800000 0x0 RW  
+.flash.appdesc 0x3f400020 0x100 R  A
+.flash.rodata 0x3f400120 0x1e1a8 RW A
+.flash.text 0x400d0020 0x870cf R XA
+.iram0.data 0x4009e504 0x0 RW  
+.iram0.bss 0x4009e504 0x0 RW  
+.dram0.heap_start 0x3ffb9ed8 0x0 RW  
+.coredump.tasks.data 0x3ffbd10c 0x158 RW 
+.coredump.tasks.data 0x3ffbcef0 0x214 RW 
+.coredump.tasks.data 0x3ffbdb6c 0x158 RW 
+.coredump.tasks.data 0x3ffbd9c0 0x1a4 RW 
+.coredump.tasks.data 0x3ffbe5cc 0x158 RW 
+.coredump.tasks.data 0x3ffbe420 0x1a4 RW 
+.coredump.tasks.data 0x3ffd0840 0x158 RW 
+.coredump.tasks.data 0x3ffd05f0 0x248 RW 
+.coredump.tasks.data 0x3ffbef2c 0x158 RW 
+.coredump.tasks.data 0x3ffbed40 0x1e4 RW 
+.coredump.tasks.data 0x3ffafae8 0x158 RW 
+.coredump.tasks.data 0x3ffaf900 0x1e0 RW 
+.coredump.tasks.data 0x3ffafd4c 0x158 RW 
+.coredump.tasks.data 0x3ffba980 0x1c0 RW 
+.coredump.tasks.data 0x3ffbbd80 0x158 RW 
+.coredump.tasks.data 0x3ffcf280 0x20c RW 
+.coredump.tasks.data 0x3ffd181c 0x158 RW 
+.coredump.tasks.data 0x3ffd15f0 0x224 RW 
+.coredump.tasks.data 0x3ffd3f74 0x158 RW 
+.coredump.tasks.data 0x3ffd3d50 0x21c RW 
+.coredump.tasks.data 0x3ffbbb4c 0x158 RW 
+.coredump.tasks.data 0x3ffbb990 0x1b4 RW
