@@ -423,6 +423,20 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	}
 	
 	httpd_resp_sendstr_chunk(req, "</form><br>");
+	
+	err = load_key_values("camera", parameter, sizeof(parameter));
+	if (err == ESP_OK) {
+		ESP_LOGD(TAG, "parameter=[%s]", parameter);
+		// save key & value to NVS		
+		if (strcmp(parameter,"1")==0){
+			httpd_resp_sendstr_chunk(req, "<h3>Camera is ON</h3>");
+		} else{
+			httpd_resp_sendstr_chunk(req, "<h3>Camera is OFF</h3>");
+		}
+	} else {
+		httpd_resp_sendstr_chunk(req, "<h3>Camera is ON</h3>");
+	}
+	
 	uint32_t total,free,available;
     available=SD_getFreeSpace(&total,&free);   
     if(available==ESP_FAIL){
@@ -439,7 +453,6 @@ static esp_err_t root_get_handler(httpd_req_t *req)
         httpd_resp_sendstr_chunk(req, full);
     }
     
-
     httpd_resp_sendstr_chunk(req, "<form method=\"post\" action=\"/post\">");
 	httpd_resp_sendstr_chunk(req, "<button name=\"apply\" value=\"1\" type=\"submit\">Apply new changes</button>");
 	httpd_resp_sendstr_chunk(req, "<button name=\"camera\" value=\"switch\" type=\"submit\">Camera switch</button>");
@@ -564,15 +577,44 @@ void http_server_task(void *pvParameters)
 			ESP_LOGI(TAG, "parameter=%s", urlBuf.parameter);
 			if (strcmp(urlBuf.parameter,"apply=1")==0){
 				ESP_LOGI(TAG, "apply clicked");
+				esp_restart();
 			} else if (strcmp(urlBuf.parameter,"camera=switch")==0){
 				ESP_LOGI(TAG, "camera clicked");
+				strcpy( urlBuf.url, "camera");
+				
+				char parameter[128];
+				char state[2];
+				esp_err_t err = load_key_values(urlBuf.url, parameter, sizeof(parameter));
+				if (err == ESP_OK) {
+					ESP_LOGD(TAG, "parameter=[%s]", parameter);
+					// save key & value to NVS		
+					if (strcmp(parameter,"1")==0){
+						strcpy(state, "0");
+					} else{
+						strcpy(state, "1");
+					}
+					strcpy( urlBuf.parameter, state);
+					err = save_key_value(urlBuf.url, urlBuf.parameter);
+					if (err != ESP_OK) {
+						ESP_LOGE(TAG, "Error (%s) saving to NVS", esp_err_to_name(err));
+					}
+					
+				} else {
+					strcpy( urlBuf.parameter, "0");
+					err = save_key_value(urlBuf.url, urlBuf.parameter);
+					if (err != ESP_OK) {
+						ESP_LOGE(TAG, "Error (%s) saving to NVS", esp_err_to_name(err));
+				}
+				}
+				esp_restart();
 			} else if (strcmp(urlBuf.parameter,"download=1")==0) {
 				ESP_LOGI(TAG, "download clicked");
-			}
-			// save key & value to NVS
-			esp_err_t err = save_key_value(urlBuf.url, urlBuf.parameter);
-			if (err != ESP_OK) {
-				ESP_LOGE(TAG, "Error (%s) saving to NVS", esp_err_to_name(err));
+			} else{ 
+				// save key & value to NVS
+				esp_err_t err = save_key_value(urlBuf.url, urlBuf.parameter);
+				if (err != ESP_OK) {
+					ESP_LOGE(TAG, "Error (%s) saving to NVS", esp_err_to_name(err));
+				}
 			}
 		}
 	}

@@ -37,6 +37,13 @@
 // server
 #include "http_server.h"
 
+//sleep
+//#include "esp_sleep.h"
+//#include "esp_timer.h"
+//#define BUTTON_GPIO_NUM_DEFAULT     4
+/* "Boot" button is active low */
+//#define BUTTON_WAKEUP_LEVEL_DEFAULT     1
+
 //camera config
 #define CAM_PIN_PWDN 32
 #define CAM_PIN_RESET -1 //software reset will be performed
@@ -214,6 +221,31 @@ int find_values(char * key, char * parameter, char * value)
 	ESP_LOGI(TAG4, "key=[%s] value=[%s]", key, value);
 	return strlen(value);
 }
+
+//esp_err_t save_key_values(char * key, char * value)
+//{
+//	nvs_handle_t my_handle;
+//	esp_err_t err;
+
+	// Open
+//	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+//	if (err != ESP_OK) return err;
+
+	// Write
+//	err = nvs_set_str(my_handle, key, value);
+//	if (err != ESP_OK) return err;
+
+	// Commit written value.
+	// After setting any values, nvs_commit() must be called to ensure changes are written
+	// to flash storage. Implementations may write to storage at other times,
+	// but this is not guaranteed.
+//	err = nvs_commit(my_handle);
+//	if (err != ESP_OK) return err;
+
+	// Close
+//	nvs_close(my_handle);
+//	return ESP_OK;
+//}
 
 //sdcard
 static const char *TAG = "sdcard";
@@ -403,6 +435,7 @@ void app_main(void)
     char val[16] = {0};
     char val2[16] = {0};
     char val3[16] = {0};
+    char camera_state[16] = "1";
     // load key & value from NVS to check changes
     strcpy( urlBuf.url, "framesize");
     r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
@@ -431,15 +464,36 @@ void app_main(void)
         find_values("radio3=",urlBuf.parameter, val3);
         ESP_LOGI(TAG4, "Picspeed readed config: %s",val3);
         PICSPEED=atoi(val3);
-    }    
+    }   
+    strcpy( urlBuf.url, "camera");
+    r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
+    if (r != ESP_OK) {
+        ESP_LOGE(TAG4, "Error (%s) loading to NVS", esp_err_to_name(r));
+    } else {
+        ESP_LOGI(TAG4, "Camera state readed config: %s",urlBuf.parameter);
+        strcpy( camera_state,urlBuf.parameter);
+    }   
+    
     //time
     time_t now;
     struct tm * tm;
     char filename[255];
     char fullname[255];
     
+    //sleep config
+    /* Configure the button GPIO as input, enable wakeup */
+    //const int button_gpio_num = BUTTON_GPIO_NUM_DEFAULT;
+    //const int wakeup_level = BUTTON_WAKEUP_LEVEL_DEFAULT;
+    //gpio_config_t config = {
+    //        .pin_bit_mask = BIT64(button_gpio_num),
+    //        .mode = GPIO_MODE_INPUT
+    //};
+    //ESP_ERROR_CHECK(gpio_config(&config));
+    //gpio_wakeup_enable(button_gpio_num,
+    //        wakeup_level == 0 ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+    //gpio_set_level(button_gpio_num,0);
     while(1) {
-        if (wifi_is_on==true){      
+        if ((wifi_is_on==true) & (strcmp(camera_state,"1")==0)){      
             ESP_LOGI(TAG3, "Taking picture...");
             camera_fb_t *pic = esp_camera_fb_get();
             if (!pic) {
@@ -490,6 +544,42 @@ void app_main(void)
             //}
 
             //vTaskDelay( 2 * portTICK_PERIOD_MS );
+            
+            //Entering light sleep
+            //esp_sleep_enable_timer_wakeup(10000000);
+            //esp_sleep_enable_gpio_wakeup();
+            /* Wait until GPIO goes high */
+            //if (gpio_get_level(button_gpio_num) == wakeup_level) {
+            //    ESP_LOGI(TAG4,"Waiting for GPIO %d to go high...\n", button_gpio_num);
+            //    do {
+            //        vTaskDelay(pdMS_TO_TICKS(10));
+            //    } while (gpio_get_level(button_gpio_num) == wakeup_level);
+            //}
+
+            /* Get timestamp before entering sleep */
+            //int64_t t_before_us = esp_timer_get_time();
+            /* Enter sleep mode */
+            //esp_light_sleep_start();
+            //int64_t t_after_us = esp_timer_get_time();
+            //ESP_LOGI(TAG3, "Camera is oFF slept for %lld ms",(t_after_us - t_before_us) / 1000);
+            /* Determine wake up reason */
+            //switch (esp_sleep_get_wakeup_cause()) {
+            //    case ESP_SLEEP_WAKEUP_TIMER:
+            //        break;
+            //    case ESP_SLEEP_WAKEUP_GPIO:
+            //        r = save_key_values("camera", "1");
+			//		if (r != ESP_OK) {
+			//			ESP_LOGE(TAG4, "Error (%s) saving to NVS", esp_err_to_name(r));
+			//		} else {
+			//		    ESP_LOGI(TAG3, "Exiting from sleep");
+			//		}
+			//		esp_restart();
+            //        break;
+            //    default:
+            //        break;
+            //}
+            ESP_LOGI(TAG3, "Camera is oFF");
+            vTaskDelay(10000000 / portTICK_RATE_MS);
         }
     }
 }
