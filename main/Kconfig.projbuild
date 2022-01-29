@@ -1,223 +1,279 @@
-menu "ADC CONFIG"
+menu "Client Configuration"
+    menu "ADC CONFIG"
 
-    choice ADC2_CHANNEL
-        bool "ADC2 Channel Num"
-        default ADC2_CHANNEL_1
-        help
-            The channel of ADC2 used in this example.
+        choice ADC2_CHANNEL
+            bool "ADC2 Channel Num"
+            default ADC2_CHANNEL_1
+            help
+                The channel of ADC2 used in this example.
 
-        config ADC2_CHANNEL_0
-            bool "ADC2 Channel 0 (GPIO 4)"
-        config ADC2_CHANNEL_1
-            bool "ADC2 Channel 1 (GPIO 0)"
-        config ADC2_CHANNEL_2
-            bool "ADC2 Channel 2 (GPIO 2)"
-        config ADC2_CHANNEL_3
-            bool "ADC2 Channel 3 (GPIO 15)"
-        config ADC2_CHANNEL_4
-            bool "ADC2 Channel 4 (GPIO 13)"
-        config ADC2_CHANNEL_5
-            bool "ADC2 Channel 5 (GPIO 12)"
-        config ADC2_CHANNEL_6
-            bool "ADC2 Channel 6 (GPIO 14)"
-        config ADC2_CHANNEL_7
-            bool "ADC2 Channel 7 (GPIO 27)"
-        config ADC2_CHANNEL_8
-            bool "ADC2 Channel 8 (GPIO 25)"
-        config ADC2_CHANNEL_9
-            bool "ADC2 Channel 9 (GPIO 26)"
-    endchoice
+            config ADC2_CHANNEL_0
+                bool "ADC2 Channel 0 (GPIO 4)"
+            config ADC2_CHANNEL_1
+                bool "ADC2 Channel 1 (GPIO 0)"
+            config ADC2_CHANNEL_2
+                bool "ADC2 Channel 2 (GPIO 2)"
+            config ADC2_CHANNEL_3
+                bool "ADC2 Channel 3 (GPIO 15)"
+            config ADC2_CHANNEL_4
+                bool "ADC2 Channel 4 (GPIO 13)"
+            config ADC2_CHANNEL_5
+                bool "ADC2 Channel 5 (GPIO 12)"
+            config ADC2_CHANNEL_6
+                bool "ADC2 Channel 6 (GPIO 14)"
+            config ADC2_CHANNEL_7
+                bool "ADC2 Channel 7 (GPIO 27)"
+            config ADC2_CHANNEL_8
+                bool "ADC2 Channel 8 (GPIO 25)"
+            config ADC2_CHANNEL_9
+                bool "ADC2 Channel 9 (GPIO 26)"
+        endchoice
 
-    config ADC2_CHANNEL
-        int
-        default 0 if ADC2_CHANNEL_0
-        default 1 if ADC2_CHANNEL_1
-        default 2 if ADC2_CHANNEL_2
-        default 3 if ADC2_CHANNEL_3
-        default 4 if ADC2_CHANNEL_4
-        default 5 if ADC2_CHANNEL_5
-        default 6 if ADC2_CHANNEL_6
-        default 7 if ADC2_CHANNEL_7
-        default 8 if ADC2_CHANNEL_8
-        default 9 if ADC2_CHANNEL_9
+        config ADC2_CHANNEL
+            int
+            default 0 if ADC2_CHANNEL_0
+            default 1 if ADC2_CHANNEL_1
+            default 2 if ADC2_CHANNEL_2
+            default 3 if ADC2_CHANNEL_3
+            default 4 if ADC2_CHANNEL_4
+            default 5 if ADC2_CHANNEL_5
+            default 6 if ADC2_CHANNEL_6
+            default 7 if ADC2_CHANNEL_7
+            default 8 if ADC2_CHANNEL_8
+            default 9 if ADC2_CHANNEL_9
 
-endmenu
+    endmenu
 
-menu "SD CARD CONFIG"
+    menu "SD CARD CONFIG"
 
-    config FORMAT_IF_MOUNT_FAILED
-        bool "Format the card if mount failed"
-        default n
-        help
-            If this config item is set, format_if_mount_failed will be set to true and the card will be formatted if
-            the mount has failed.
+        config FORMAT_IF_MOUNT_FAILED
+            bool "Format the card if mount failed"
+            default n
+            help
+                If this config item is set, format_if_mount_failed will be set to true and the card will be formatted if
+                the mount has failed.
+                
+        choice MOSI
+            bool "MOSI"
+            default ESP32CAM
+            help
+                MOSI OR DI OR CMD.
+
+            config ESP32CAM
+                bool "ESP32CAM GPIO15"
+            config ESP32
+                bool "ESP32 GPIO13"
+        endchoice
+
+        config MOSI
+            int 
+            default 15 if ESP32CAM
+            default 2 if ESP32  
             
-    choice MOSI
-        bool "MOSI"
-        default ESP32CAM
-        help
-            MOSI OR DI OR CMD.
+        choice MISO
+            bool "MISO"
+            default ESP32CAM
+            help
+                MISO OR DO OR DATA0.
 
-        config ESP32CAM
-            bool "ESP32CAM GPIO15"
-        config ESP32
-            bool "ESP32 GPIO13"
-    endchoice
-
-    config MOSI
-        int 
-        default 15 if ESP32CAM
-        default 2 if ESP32  
+            config ESP32CAM
+                bool "ESP32CAM GPIO2"
+            config ESP32
+                bool "ESP32 GPIO4"
+        endchoice
         
-    choice MISO
-        bool "MISO"
-        default ESP32CAM
-        help
-            MISO OR DO OR DATA0.
+        config MISO
+            int 
+            default 2 if ESP32CAM
+            default 4 if ESP32   
+            
+        choice CLK
+            bool "CLK"
+            default ESP32CAM
+            help
+                CLK OR SCLK.
 
-        config ESP32CAM
-            bool "ESP32CAM GPIO2"
-        config ESP32
-            bool "ESP32 GPIO4"
-    endchoice
+            config ESP32CAM
+                bool "ESP32CAM GPIO14"
+            config ESP32
+                bool "ESP32 GPIO14"
+        endchoice
+            
+        config CLK
+            int 
+            default 14 if ESP32CAM
+            default 14 if ESP32   
+            
+        choice CS
+            bool "CS"
+            default ESP32CAM
+            help
+                CS OR DATA3.
+
+            config ESP32CAM
+                bool "ESP32CAM GPIO13"
+            config ESP32
+                bool "ESP32 GPIO15"
+        endchoice
+
+        config CS
+            int 
+            default 13 if ESP32CAM
+            default 15 if ESP32   
+    endmenu        
+
+    menu "WIFI CONFIG"
+        config ESP_WIFI_SSID
+            string "WiFi SSID"
+            default "myssid"
+            help
+                SSID (network name) for the example to connect to.
+
+        config ESP_WIFI_PASSWORD
+            string "WiFi Password"
+            default "mypassword"
+            help
+                WiFi password (WPA or WPA2) for the example to use min length is 8 .
+        config ESP_WIFI_CHANNEL
+            int "WiFi Channel"
+            range 1 13
+            default 1
+            help
+                WiFi channel (network channel) for the example to use.
+
+        config ESP_MAX_STA_CONN
+            int "Maximal STA connections"
+            default 4
+            help
+                Max number of the STA connects to AP.
+                
+        config MDNS_HOSTNAME
+            string "mDNS Hostname"
+            default "esp32-server"
+            help
+                The mDNS host name used by the ESP32.        
+    endmenu         
     
-    config MISO
-        int 
-        default 2 if ESP32CAM
-        default 4 if ESP32   
-        
-    choice CLK
-        bool "CLK"
-        default ESP32CAM
-        help
-            CLK OR SCLK.
+    menu "HTTP Server Setting"
 
-        config ESP32CAM
-            bool "ESP32CAM GPIO14"
-        config ESP32
-            bool "ESP32 GPIO14"
-    endchoice
-        
-    config CLK
-        int 
-        default 14 if ESP32CAM
-        default 14 if ESP32   
-        
-    choice CS
-        bool "CS"
-        default ESP32CAM
-        help
-            CS OR DATA3.
+		config WEB_PORT
+			int "HTTP Server Port"
+			default 80
+			help
+				HTTP server port to use.
+				
+        choice MEDIA_DIR
+            bool "sdcard or flash"
+            default sdcard
+            help
+                choose where you place frontend filed (front directory).
 
-        config ESP32CAM
-            bool "ESP32CAM GPIO13"
-        config ESP32
-            bool "ESP32 GPIO15"
-    endchoice
+            config sdcard
+                bool "read from sdcard"
+            config flash
+                bool "read from flash"
+        endchoice
 
-    config CS
-        int 
-        default 13 if ESP32CAM
-        default 15 if ESP32   
-endmenu        
+        config MEDIA_DIR
+            string  
+            default "/sdcard/front/" if sdcard
+            default "/front/" if flash		
 
-menu "WIFI CONFIG"
-    config ESP_WIFI_SSID
-        string "WiFi SSID"
-        default "myssid"
-        help
-            SSID (network name) for the example to connect to.
+	endmenu
+                
+    menu "CAMERA CONFIG"
+        choice XCLK_FREQ
+            bool "Frequency"
+            default 20MHz
+            help
+                frequency 10MHz or 20MHz.
 
-    config ESP_WIFI_PASSWORD
-        string "WiFi Password"
-        default "mypassword"
-        help
-            WiFi password (WPA or WPA2) for the example to use min length is 8 .
-    config ESP_WIFI_CHANNEL
-        int "WiFi Channel"
-        range 1 13
-        default 1
-        help
-            WiFi channel (network channel) for the example to use.
+            config 20MHz
+                bool "20MHz"
+            config 10MHz
+                bool "10MHz"
+        endchoice
 
-    config ESP_MAX_STA_CONN
-        int "Maximal STA connections"
-        default 4
-        help
-            Max number of the STA connects to AP.
-endmenu            
+        config XCLK_FREQ
+            int 
+            default 20000000 if 20MHz
+            default 10000000 if 10MHz
             
-menu "CAMERA CONFIG"
-    choice XCLK_FREQ
-        bool "Frequency"
-        default 20MHz
-        help
-            frequency 10MHz or 20MHz.
+        choice FRAMESIZE
+            bool "Resolution"
+            default QVGA
+            help
+                Do not use sizes above QVGA when not JPEG.
 
-        config 20MHz
-            bool "20MHz"
-        config 10MHz
-            bool "10MHz"
-    endchoice
+            config QVGA
+                bool "QVGA 320x240"
+            config CIF
+                bool "CIF 400x296"
+            config HVGA
+                bool "HVGA 480x320"
+            config VGA
+                bool "VGA 640x480"  
+            config SVGA
+                bool "SVGA 800x600"    
+            config HD
+                bool "HD 1280x720" 
+            config UXGA
+                bool "UXGA 1600x1200" 
+        endchoice
 
-    config XCLK_FREQ
-        int 
-        default 20000000 if 20MHz
-        default 10000000 if 10MHz
-        
-    choice FRAMESIZE
-        bool "Resolution"
-        default QVGA
-        help
-            Do not use sizes above QVGA when not JPEG.
-
-        config QVGA
-            bool "QVGA 320x240"
-        config CIF
-            bool "CIF 400x296"
-        config HVGA
-            bool "HVGA 480x320"
-        config VGA
-            bool "VGA 640x480"  
-        config SVGA
-            bool "SVGA 800x600"    
-        config HD
-            bool "HD 1280x720" 
-        config UXGA
-            bool "UXGA 1600x1200" 
-    endchoice
-
-    config FRAMESIZE
-        int 
-        default 5 if QVGA
-        default 6 if CIF 
-        default 7 if HVGA
-        default 8 if VGA 
-        default 9 if SVGA
-        default 11 if HD 
-        default 13 if UXGA
-        
-    choice PIXFORMAT
-        bool "Image format"
-        default JPEG
-        help
-            image format to save.
-
-        config JPEG
-            bool "JPEG"
-        config GRAYSCALE
-            bool "GRAYSCALE"
-        config RAW
-            bool "RAW"
-        config RGB565
-            bool "RGB565"    
-    endchoice
-
-    config PIXFORMAT
-        int 
-        default 3 if JPEG
-        default 2 if GRAYSCALE    
-        default 5 if RAW
-        default 1 if RGB565  
+        config FRAMESIZE
+            int 
+            default 5 if QVGA
+            default 6 if CIF 
+            default 7 if HVGA
+            default 8 if VGA 
+            default 9 if SVGA
+            default 11 if HD 
+            default 13 if UXGA
             
+        choice PIXFORMAT
+            bool "Image format"
+            default JPEG
+            help
+                image format to save.
+
+            config JPEG
+                bool "JPEG"
+            config GRAYSCALE
+                bool "GRAYSCALE"
+            config RAW
+                bool "RAW"
+            config RGB565
+                bool "RGB565"    
+        endchoice
+
+        config PIXFORMAT
+            int 
+            default 3 if JPEG
+            default 2 if GRAYSCALE    
+            default 5 if RAW
+            default 1 if RGB565  
+            
+        choice PICSPEED
+            bool "Camera speed"
+            default 5s
+            help
+                image speed to capture and save.
+
+            config 5s
+                bool "5s"
+            config 3s
+                bool "3s"    
+            config 2s
+                bool "2s"    
+        endchoice
+
+        config PICSPEED
+            int 
+            default 5000 if 5s
+            default 3000 if 3s 
+            default 2000 if 2s 
+    
+                
+    endmenu
 endmenu

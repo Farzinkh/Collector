@@ -20,6 +20,8 @@
 #include "driver/spi_common.h"
 #include "sdmmc_cmd.h"
 #include "sdkconfig.h"
+#include <dirent.h> 
+#include <inttypes.h>
 
 //WIFI
 #include "esp_wifi.h"
@@ -32,6 +34,10 @@
 #include <sys/param.h>
 #include "esp_camera.h"
 
+// server
+#include "http_server.h"
+
+//camera config
 #define CAM_PIN_PWDN 32
 #define CAM_PIN_RESET -1 //software reset will be performed
 #define CAM_PIN_XCLK 0
@@ -50,6 +56,7 @@
 #define CAM_PIN_HREF 23
 #define CAM_PIN_PCLK 22
 
+int PICSPEED=CONFIG_PICSPEED;
 static const char *TAG3 = "camera";
 
 static camera_config_t camera_config = {
@@ -97,16 +104,15 @@ static esp_err_t init_camera()
     return ESP_OK;
 }
 
-#define ADC2_CHANNEL    CONFIG_ADC2_CHANNEL
+//wifi
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_WIFI_CHANNEL   CONFIG_ESP_WIFI_CHANNEL
 #define EXAMPLE_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
-//wifi
 static const char *TAG2 = "wifi softAP";
 
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void AP_wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
@@ -131,7 +137,7 @@ void wifi_init_softap(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
-                                                        &wifi_event_handler,
+                                                        &AP_wifi_event_handler,
                                                         NULL,
                                                         NULL));
 
@@ -155,6 +161,58 @@ void wifi_init_softap(void)
 
     ESP_LOGI(TAG2, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
+}
+
+//server
+#define STORAGE_NAMESPACE "www"
+static const char *TAG4 = "server";
+QueueHandle_t xQueueHttp;
+
+void http_server_task(void *pvParameters);
+// load key & value from NVS
+esp_err_t load_key_value(char * key, char * value, size_t size)
+{
+	nvs_handle_t my_handle;
+	esp_err_t err;
+
+	// Open
+	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+	if (err != ESP_OK) return err;
+
+	// Read
+	size_t _size = size;
+	err = nvs_get_str(my_handle, key, value, &_size);
+	//if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) return err;
+	if (err != ESP_OK) return err;
+
+	// Close
+	nvs_close(my_handle);
+	//return ESP_OK;
+	return err;
+}
+
+int find_values(char * key, char * parameter, char * value) 
+{
+	//char * addr1;
+	char * addr1 = strstr(parameter, key);
+	if (addr1 == NULL) return 0;
+	ESP_LOGD(TAG4, "addr1=%s", addr1);
+
+	char * addr2 = addr1 + strlen(key);
+	ESP_LOGD(TAG4, "addr2=[%s]", addr2);
+
+	char * addr3 = strstr(addr2, "&");
+	ESP_LOGD(TAG4, "addr3=%p", addr3);
+	if (addr3 == NULL) {
+		strcpy(value, addr2);
+	} else {
+		int length = addr3-addr2;
+		ESP_LOGD(TAG4, "addr2=%p addr3=%p length=%d", addr2, addr3, length);
+		strncpy(value, addr2, length);
+		value[length] = 0;
+	}
+	ESP_LOGI(TAG4, "key=[%s] value=[%s]", key, value);
+	return strlen(value);
 }
 
 //sdcard
@@ -186,7 +244,22 @@ static const char *TAG = "sdcard";
 #endif //CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 #endif //USE_SPI_MODE
 
+int search_in_sdcard(void) {
+  DIR *d;
+  struct dirent *dir;
+  d = opendir(MOUNT_POINT);
+  ESP_LOGI(TAG,"============Listing files in sdcard============");
+  if (d) {
+    while ((dir = readdir(d)) != NULL) {
+      ESP_LOGI(TAG,"%s", dir->d_name);
+    }
+    closedir(d);
+  }
+  return(0);
+}
+
 //adc
+//#define ADC2_CHANNEL    CONFIG_ADC2_CHANNEL
 //#if CONFIG_IDF_TARGET_ESP32
 //#include "driver/sdmmc_host.h"
 //static const adc_bits_width_t width = ADC_WIDTH_BIT_12;
@@ -214,7 +287,7 @@ void app_main(void)
     if(ESP_OK != init_camera()) {
         return;
     }
-    //Initialize NVS
+    //Initialize NVS for wifi
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
@@ -226,6 +299,24 @@ void app_main(void)
     wifi_init_softap();
     bool wifi_is_on =true;
     esp_err_t r;
+    
+    // Initialize SPIFFS for frontend files
+	ESP_LOGI(TAG4, "Initializing SPIFFS");
+	
+	// Create Queue
+	xQueueHttp = xQueueCreate( 10, sizeof(URL_t) );
+	configASSERT( xQueueHttp );
+    
+    /* Get the local IP address */
+	tcpip_adapter_ip_info_t ip_info;
+	ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
+
+	char cparam0[64];
+	sprintf(cparam0, "%s", ip4addr_ntoa(&ip_info.ip));
+	xTaskCreate(http_server_task, "HTTP", 1024*6, (void *)cparam0, 2, NULL);
+
+	// Wait for the task to start, because cparam0 is discarded.
+	vTaskDelay(10);
     
     // init adc
     //uint8_t output_data=0; 
@@ -254,6 +345,7 @@ void app_main(void)
 
     //printf("start conversion.\n");
     
+    // SDcard
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
     #ifdef CONFIG_FORMAT_IF_MOUNT_FAILED
             .format_if_mount_failed = true,
@@ -304,18 +396,82 @@ void app_main(void)
     }
 
     // Card has been initialized, print its properties
+    search_in_sdcard();
     sdmmc_card_print_info(stdout, card);
+    //server
+    URL_t urlBuf;
+    char val[16] = {0};
+    char val2[16] = {0};
+    char val3[16] = {0};
+    // load key & value from NVS to check changes
+    strcpy( urlBuf.url, "framesize");
+    r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
+    if (r != ESP_OK) {
+        ESP_LOGE(TAG4, "Error (%s) loading to NVS", esp_err_to_name(r));
+    } else {
+        find_values("radio=",urlBuf.parameter, val);
+        ESP_LOGI(TAG4, "Framesize readed config: %s",val);
+        camera_config.frame_size=atoi(val);
+        
+    }
+    strcpy( urlBuf.url, "pixformat");
+    r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
+    if (r != ESP_OK) {
+        ESP_LOGE(TAG4, "Error (%s) loading to NVS", esp_err_to_name(r));
+    } else {
+        find_values("radio2=",urlBuf.parameter, val2);
+        ESP_LOGI(TAG4, "Pixformat readed config: %s",val2);
+        camera_config.pixel_format=atoi(val2);
+    }
+    strcpy( urlBuf.url, "picspeed");
+    r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
+    if (r != ESP_OK) {
+        ESP_LOGE(TAG4, "Error (%s) loading to NVS", esp_err_to_name(r));
+    } else {
+        find_values("radio3=",urlBuf.parameter, val3);
+        ESP_LOGI(TAG4, "Picspeed readed config: %s",val3);
+        PICSPEED=atoi(val3);
+    }    
+    //time
+    time_t now;
+    struct tm * tm;
+    char filename[255];
+    char fullname[255];
     
     while(1) {
-        if (wifi_is_on==true){
+        if (wifi_is_on==true){      
             ESP_LOGI(TAG3, "Taking picture...");
             camera_fb_t *pic = esp_camera_fb_get();
-
+            if (!pic) {
+                ESP_LOGE(TAG3, "Camera capture failed");
+                break;
+            }
             // use pic->buf to access the image
             ESP_LOGI(TAG3, "Picture taken! Its size was: %zu bytes", pic->len);
+            
+            // Use POSIX and C standard library functions to work with files.
+            // First create a file.
+            ESP_LOGI(TAG, "Opening file");
+            
+            now = time(0); // get current time
+            tm = localtime(&now); // get structure
+            memset(fullname, 0, sizeof(fullname));
+            sprintf(filename, "/%02d%02d%02d%02d.jpg",tm->tm_mday,tm->tm_hour,tm->tm_min,tm->tm_sec);
+            strcat(fullname,MOUNT_POINT);
+            strcat(fullname,filename);
+            FILE* f = fopen(fullname, "wb");
+            if (f == NULL) {
+                ESP_LOGE(TAG, "Failed to open file for writing");
+                ESP_LOGE(TAG,"%s", fullname);
+                return;
+            }
+            fwrite(pic->buf,1,pic->len,f);
+            fclose(f);
+            ESP_LOGI(TAG, "File written");
+            
+            //release buffer
             esp_camera_fb_return(pic);
-
-            vTaskDelay(5000 / portTICK_RATE_MS);
+            vTaskDelay(PICSPEED / portTICK_RATE_MS);
         } else {
         
             //adc 

@@ -7,3 +7,11 @@ add_compile_options(-fdiagnostics-color=always)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(client)
+
+
+# for uploading frontend files into flash (need custom partion table)
+# Create a SPIFFS image from the contents of the 'front' directory
+# that fits the partition named 'storage'. FLASH_IN_PROJECT indicates that
+# the generated image should be flashed when the entire project is flashed to
+# the target with 'idf.py -p PORT flash
+spiffs_create_partition_image(storage front FLASH_IN_PROJECT)
