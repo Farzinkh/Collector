@@ -22,13 +22,25 @@
 #include "esp_vfs_fat.h"
 #include <inttypes.h>
 
+#include "esp_vfs.h"
 #include "http_server.h"
 
 static const char *TAG = "HTTP_SERVER";
 
 extern QueueHandle_t xQueueHttp;
-
+/* Scratch buffer size */
+#define SCRATCH_BUFSIZE  8192
 #define STORAGE_NAMESPACE "www"
+#define FILE_PATH_MAX (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
+#define MOUNT_POINT "/sdcard"
+
+struct file_server_data {
+    /* Base path of file storage */
+    char base_path[ESP_VFS_PATH_MAX + 1];
+
+    /* Scratch buffer for temporary storage during file transfer */
+    char scratch[SCRATCH_BUFSIZE];
+};
 
 esp_err_t save_key_value(char * key, char * value)
 {
@@ -456,7 +468,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
     httpd_resp_sendstr_chunk(req, "<form method=\"post\" action=\"/post\">");
 	httpd_resp_sendstr_chunk(req, "<button name=\"apply\" value=\"1\" type=\"submit\">Apply new changes</button>");
 	httpd_resp_sendstr_chunk(req, "<button name=\"camera\" value=\"switch\" type=\"submit\">Camera switch</button>");
-	httpd_resp_sendstr_chunk(req, "<button name=\"download\" value=\"1\" type=\"submit\">Download Database</button><br>");
+	httpd_resp_sendstr_chunk(req, "<button name=\"format\" value=\"1\" type=\"submit\">Format Database</button><br>");
 	httpd_resp_sendstr_chunk(req, "</form><br>");
 
 	/* Send Image to HTML file */
@@ -471,7 +483,201 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
+int format_files_in_sdcard(void) {
+    DIR *d;
+    struct dirent *dir;
+    char full[255]="";
+	struct stat st;
+    ESP_LOGI(TAG, "formating");
+
+    d = opendir(MOUNT_POINT);
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+        if (strcmp(dir->d_name, "/FRONT") == 0) {
+        
+		} else {
+        strcpy( full,"");
+        strcat(full,MOUNT_POINT);
+        strcat(full,"/");
+		strcat(full,dir->d_name);
+		if (stat(full, &st) == 0) {
+            unlink(full);
+		} else {
+		    ESP_LOGE(TAG, "file not found %s",full);
+		}
+        }
+        }
+        closedir(d);
+    }
+    ESP_LOGI(TAG, "sdcard formated");
+  return(0);
+}
+
+int list_files_in_sdcard(void) {
+    DIR *d;
+    struct dirent *dir;
+    struct stat st;
+    if (stat(MOUNT_POINT"/links.txt", &st) == 0) {
+        // Delete it if it exists
+        unlink(MOUNT_POINT"/links.txt");
+    }
+    FILE* f = fopen(MOUNT_POINT"/links.txt", "w");
+	if (f == NULL) {
+		ESP_LOGE(TAG, "Failed to open file for writing");
+		return(0);
+	}
+    ESP_LOGI(TAG, "Listing files");
+    d = opendir(MOUNT_POINT);
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+        fprintf(f, "%s\n", dir->d_name);
+        }
+        closedir(d);
+    }
+    fclose(f);
+    ESP_LOGI(TAG, "File written");
+  return(0);
+}
+
+#define IS_FILE_EXT(filename, ext) \
+    (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
+/* Set HTTP response content type according to file extension */
+static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
+{
+    if (IS_FILE_EXT(filename, ".pdf")) {
+        return httpd_resp_set_type(req, "application/pdf");
+    } else if (IS_FILE_EXT(filename, ".html")) {
+        return httpd_resp_set_type(req, "text/html");
+    } else if (IS_FILE_EXT(filename, ".jpeg")) {
+        return httpd_resp_set_type(req, "image/jpeg");
+    } else if (IS_FILE_EXT(filename, ".ico")) {
+        return httpd_resp_set_type(req, "image/x-icon");
+    }
+    /* This is a limited set only */
+    /* For any other type always set as plain text */
+    return httpd_resp_set_type(req, "text/plain");
+}
+
+static const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
+{
+    const size_t base_pathlen = strlen(base_path);
+    size_t pathlen = strlen(uri);
+
+    const char *quest = strchr(uri, '?');
+    if (quest) {
+        pathlen = MIN(pathlen, quest - uri);
+    }
+    const char *hash = strchr(uri, '#');
+    if (hash) {
+        pathlen = MIN(pathlen, hash - uri);
+    }
+
+    if (base_pathlen + pathlen + 1 > destsize) {
+        /* Full path string won't fit into destination buffer */
+        return NULL;
+    }
+
+    /* Construct full path (base + path) */
+    strcpy(dest, base_path);
+    strlcpy(dest + base_pathlen, uri, pathlen + 1);
+
+    /* Return pointer to path, skipping the base */
+    return dest + base_pathlen;
+}
+
 /* HTTP post handler */
+static esp_err_t download_database(httpd_req_t *req)
+{
+	ESP_LOGI(TAG, "root_post_handler2 req->uri=[%s]", req->uri);
+	ESP_LOGI(TAG, "root_post_handler2 content length %d", req->content_len);
+	char filepath[FILE_PATH_MAX];
+    FILE *fd = NULL;
+    struct stat file_stat;
+
+    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
+                                             req->uri, sizeof(filepath));
+    if (!filename) {
+        ESP_LOGE(TAG, "Filename is too long");
+        /* Respond with 500 Internal Server Error */
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Filename too long");
+        return ESP_FAIL;
+    }
+        /* If name has trailing '/', respond with directory contents */
+    //if (filename[strlen(filename) - 1] == '/') {
+    //    return http_resp_dir_html(req, filepath);
+    //}
+	char full[255]="";
+	strcat(full,MOUNT_POINT);
+	strcat(full,filepath);
+	
+	if (strcmp(filepath, "/links") == 0) {
+	list_files_in_sdcard();
+	strcpy( full, MOUNT_POINT"/links.txt");
+	} else {
+    if (stat(full, &file_stat) == -1) {
+        /* If file not present on SPIFFS check if URI
+         * corresponds to one of the hardcoded paths */
+        //if (strcmp(filepath, "/links") == 0) {
+        //    return index_html_get_handler(req);
+        //} else if (strcmp(filename, "/favicon.ico") == 0) {
+        //    return favicon_get_handler(req);
+        //}
+        ESP_LOGE(TAG, "Failed to stat file : %s", full);
+        /* Respond with 404 Not Found */
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File does not exist");
+        return ESP_FAIL;
+    } else{
+        ESP_LOGI(TAG, "File found : %s", full);
+    }
+	}
+	
+    fd = fopen(full, "r");
+    if (!fd) {
+        ESP_LOGE(TAG, "Failed to read existing file : %s", full);
+        /* Respond with 500 Internal Server Error */
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read existing file");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Sending file : %s (%ld bytes)...", filename, file_stat.st_size);
+    set_content_type_from_file(req, filename);
+
+    /* Retrieve the pointer to scratch buffer for temporary storage */
+    char *chunk = ((struct file_server_data *)req->user_ctx)->scratch;
+    size_t chunksize;
+    do {
+        /* Read file in chunks into the scratch buffer */
+        chunksize = fread(chunk, 1, SCRATCH_BUFSIZE, fd);
+
+        if (chunksize > 0) {
+            /* Send the buffer contents as HTTP response chunk */
+            if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {
+                fclose(fd);
+                ESP_LOGE(TAG, "File sending failed!");
+                /* Abort sending file */
+                httpd_resp_sendstr_chunk(req, NULL);
+                /* Respond with 500 Internal Server Error */
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
+               return ESP_FAIL;
+           }
+        }
+
+        /* Keep looping till the whole file is sent */
+    } while (chunksize != 0);
+
+    /* Close file after sending complete */
+    fclose(fd);
+    ESP_LOGI(TAG, "File sending complete");
+
+    /* Respond with an empty chunk to signal HTTP response completion */
+	#ifdef CONFIG_EXAMPLE_HTTPD_CONN_CLOSE_HEADER
+        httpd_resp_set_hdr(req, "Connection", "close");
+	#endif
+        httpd_resp_send_chunk(req, NULL, 0);
+        return ESP_OK;
+	
+}
+
 static esp_err_t root_post_handler(httpd_req_t *req)
 {
 	ESP_LOGI(TAG, "root_post_handler req->uri=[%s]", req->uri);
@@ -520,6 +726,8 @@ static esp_err_t root_post_handler(httpd_req_t *req)
 /* Function to start the web server */
 esp_err_t start_server(const char *base_path, int port)
 {
+    static struct file_server_data *server_data = NULL;
+
 	httpd_handle_t server = NULL;
 	httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 	config.server_port = port;
@@ -534,7 +742,12 @@ esp_err_t start_server(const char *base_path, int port)
 		ESP_LOGE(TAG, "Failed to start file server!");
 		return ESP_FAIL;
 	}
-
+    /* Allocate memory for server data */
+    server_data = calloc(1, sizeof(struct file_server_data));
+    if (!server_data) {
+        ESP_LOGE(TAG, "Failed to allocate memory for server data");
+        return ESP_ERR_NO_MEM;
+    }
 	/* URI handler for get */
 	httpd_uri_t _root_get_handler = {
 		.uri	   = "/",
@@ -551,8 +764,17 @@ esp_err_t start_server(const char *base_path, int port)
 		.handler   = root_post_handler,
 		//.user_ctx  = server_data	// Pass server data as context
 	};
+	
+	/* URI handler for post */
+	httpd_uri_t _root_post_handler2 = {
+		.uri	   = "/*",
+		.method    = HTTP_GET,
+		.handler   = download_database,
+		.user_ctx  = server_data	// Pass server data as context
+	};
+	
 	httpd_register_uri_handler(server, &_root_post_handler);
-
+	httpd_register_uri_handler(server, &_root_post_handler2);
 
 	return ESP_OK;
 }
@@ -607,8 +829,9 @@ void http_server_task(void *pvParameters)
 				}
 				}
 				esp_restart();
-			} else if (strcmp(urlBuf.parameter,"download=1")==0) {
-				ESP_LOGI(TAG, "download clicked");
+			} else if (strcmp(urlBuf.parameter,"format=1")==0) {
+				ESP_LOGI(TAG, "format clicked");
+				format_files_in_sdcard();
 			} else{ 
 				// save key & value to NVS
 				esp_err_t err = save_key_value(urlBuf.url, urlBuf.parameter);
