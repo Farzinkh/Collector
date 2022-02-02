@@ -123,6 +123,22 @@ menu "Client Configuration"
     endmenu        
 
     menu "WIFI CONFIG"
+        choice WIFI_MODE
+            bool "Choose operation mode"
+            default AP
+            help
+                station or accespoint.
+            config AP
+                bool "AP"
+            config STA
+                bool "STA"
+        endchoice
+
+        config WIFI_MODE
+            int 
+            default 1 if STA
+            default 0 if AP
+            
         config ESP_WIFI_SSID
             string "WiFi SSID"
             default "myssid"

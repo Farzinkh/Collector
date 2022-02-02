@@ -29,6 +29,7 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "freertos/event_groups.h"
 
 // camera
 #include <sys/param.h>
@@ -116,8 +117,127 @@ static esp_err_t init_camera()
 #define EXAMPLE_ESP_WIFI_PASS CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_WIFI_CHANNEL CONFIG_ESP_WIFI_CHANNEL
 #define EXAMPLE_MAX_STA_CONN CONFIG_ESP_MAX_STA_CONN
+#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
+static EventGroupHandle_t s_wifi_event_group;
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG2 = "wifi softAP";
+static const char *TAG2 = "wifi";
+static int s_retry_num = 0;
+
+
+
+static void sta_event_handler(void* arg, esp_event_base_t event_base,
+                                int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (s_retry_num < CONFIG_ESP_MAXIMUM_RETRY) {
+            esp_wifi_connect();
+            s_retry_num++;
+            ESP_LOGI(TAG2, "retry to connect to the AP");
+        } else {
+            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            esp_restart();
+        }
+        ESP_LOGI(TAG2,"connect to the AP fail");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG2, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+    ESP_LOGI(TAG2, "Event %d happend" ,event_id);
+}
+
+void wifi_init_sta(void)
+{
+    s_wifi_event_group = xEventGroupCreate();
+
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    
+    //static ip config
+
+    //esp_netif_t *my_sta = esp_netif_create_default_wifi_sta();
+
+    //esp_netif_dhcpc_stop(my_sta);
+
+    //esp_netif_ip_info_t ip_info;
+
+    //IP4_ADDR(&ip_info.ip, 192, 168, 43, 22);
+   	//IP4_ADDR(&ip_info.gw, 192, 168, 15, 1);
+   	//IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
+
+    //esp_netif_set_ip_info(my_sta, &ip_info);
+
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &sta_event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &sta_event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_ESP_WIFI_SSID,
+            .password = EXAMPLE_ESP_WIFI_PASS,
+            /* Setting a password implies station will connect to all security modes including WEP/WPA.
+             * However these modes are deprecated and not advisable to be used. Incase your Access point
+             * doesn't support WPA2, these mode can be enabled by commenting below line */
+	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+
+            .pmf_cfg = {
+                .capable = true,
+                .required = false
+            },
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+    ESP_ERROR_CHECK(esp_wifi_start() );
+
+    ESP_LOGI(TAG2, "wifi_init_sta finished.");
+
+    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
+     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+            pdFALSE,
+            pdFALSE,
+            portMAX_DELAY);
+
+    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
+     * happened. */
+    if (bits & WIFI_CONNECTED_BIT) {
+        ESP_LOGI(TAG2, "connected to ap SSID:%s password:%s",
+                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    } else if (bits & WIFI_FAIL_BIT) {
+        ESP_LOGE(TAG2, "Failed to connect to SSID:%s, password:%s",
+                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 esp_restart();
+    } else {
+        ESP_LOGE(TAG2, "UNEXPECTED EVENT");
+    }
+
+    /* The event will not be processed after unregister */
+    //ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    //ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+    //vEventGroupDelete(s_wifi_event_group);
+}
 
 static void AP_wifi_event_handler(void *arg, esp_event_base_t event_base,
                                   int32_t event_id, void *event_data)
@@ -327,6 +447,13 @@ int search_in_sdcard(void)
 
 void app_main(void)
 {
+    // Initialize SPIFFS for frontend files
+    ESP_LOGI(TAG4, "Initializing SPIFFS");
+
+    // Create Queue
+    xQueueHttp = xQueueCreate(10, sizeof(URL_t));
+    configASSERT(xQueueHttp);
+    
     // Initialize NVS for wifi
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -335,21 +462,19 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-
+    tcpip_adapter_ip_info_t ip_info;
+    if (CONFIG_WIFI_MODE==0){
     ESP_LOGI(TAG2, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
-    bool wifi_is_on = true;
-
-    // Initialize SPIFFS for frontend files
-    ESP_LOGI(TAG4, "Initializing SPIFFS");
-
-    // Create Queue
-    xQueueHttp = xQueueCreate(10, sizeof(URL_t));
-    configASSERT(xQueueHttp);
-
     /* Get the local IP address */
-    tcpip_adapter_ip_info_t ip_info;
     ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
+    } else {
+    ESP_LOGI(TAG2, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
+    /* Get the local IP address */
+    ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info));
+    }
+    bool wifi_is_on = true;
 
     char cparam0[64];
     sprintf(cparam0, "%s", ip4addr_ntoa(&ip_info.ip));
