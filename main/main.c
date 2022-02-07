@@ -38,6 +38,82 @@
 // server
 #include "http_server.h"
 
+// blink
+
+#define BLINK_GPIO CONFIG_BLINK_GPIO
+
+static uint8_t s_led_state = 0;
+
+static void blink_mode_1(void)
+{
+    int counter;
+    for(counter=0;counter<6;counter=counter+1){
+    /* Set the GPIO level according to the state (LOW or HIGH)*/
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    /* Toggle the LED state */
+    s_led_state = !s_led_state;
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  
+    }
+}
+
+static void blink_mode_2(void)
+{
+    int counter;
+    for(counter=0;counter<6;counter=counter+1){
+    /* Set the GPIO level according to the state (LOW or HIGH)*/
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);  
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);  
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    /* Toggle the LED state */
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  
+    }
+}
+
+static void blink_mode_3(void)
+{
+    int counter;
+    for(counter=0;counter<12;counter=counter+1){
+    /* Set the GPIO level according to the state (LOW or HIGH)*/
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);  
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
+static void blink_mode_4(void)
+{
+    int counter;
+    for(counter=0;counter<6;counter=counter+1){
+    /* Set the GPIO level according to the state (LOW or HIGH)*/
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  
+    gpio_set_level(BLINK_GPIO, s_led_state);
+    s_led_state = !s_led_state;
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    }
+}
+
+static void configure_led(void)
+{
+    gpio_reset_pin(BLINK_GPIO);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(BLINK_GPIO,1);
+}
+
 // sleep
 //#include "esp_sleep.h"
 //#include "esp_timer.h"
@@ -112,20 +188,72 @@ static esp_err_t init_camera()
     return ESP_OK;
 }
 
+//NVS
+#define STORAGE_NAMESPACE "www"
+esp_err_t save_key_values(char * key, char * value)
+{
+	nvs_handle_t my_handle;
+	esp_err_t err;
+
+	// Open
+	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+	if (err != ESP_OK) return err;
+
+	// Write
+	err = nvs_set_str(my_handle, key, value);
+	if (err != ESP_OK) return err;
+
+	// Commit written value.
+	// After setting any values, nvs_commit() must be called to ensure changes are written
+	// to flash storage. Implementations may write to storage at other times,
+	// but this is not guaranteed.
+	err = nvs_commit(my_handle);
+	if (err != ESP_OK) return err;
+
+	// Close
+	nvs_close(my_handle);
+	return ESP_OK;
+}
+
+void http_server_task(void *pvParameters);
+// load key & value from NVS
+esp_err_t load_key_value(char *key, char *value, size_t size)
+{
+    nvs_handle_t my_handle;
+    esp_err_t err;
+
+    // Open
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+        return err;
+
+    // Read
+    size_t _size = size;
+    err = nvs_get_str(my_handle, key, value, &_size);
+    // if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) return err;
+    if (err != ESP_OK)
+        return err;
+
+    // Close
+    nvs_close(my_handle);
+    // return ESP_OK;
+    return err;
+}
+
 // wifi
-#define EXAMPLE_ESP_WIFI_SSID CONFIG_ESP_WIFI_SSID
-#define EXAMPLE_ESP_WIFI_PASS CONFIG_ESP_WIFI_PASSWORD
-#define EXAMPLE_ESP_WIFI_CHANNEL CONFIG_ESP_WIFI_CHANNEL
-#define EXAMPLE_MAX_STA_CONN CONFIG_ESP_MAX_STA_CONN
-#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
+#define ESP_STA_WIFI_SSID CONFIG_ESP_STA_WIFI_SSID
+#define ESP_STA_WIFI_PASS CONFIG_ESP_STA_WIFI_PASSWORD
+#define ESP_AP_WIFI_SSID CONFIG_ESP_AP_WIFI_SSID
+#define ESP_AP_WIFI_PASS CONFIG_ESP_AP_WIFI_PASSWORD
+#define ESP_WIFI_CHANNEL CONFIG_ESP_WIFI_CHANNEL
+#define MAX_STA_CONN CONFIG_ESP_MAX_STA_CONN
+#define ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
 static const char *TAG2 = "wifi";
 static int s_retry_num = 0;
-
-
 
 static void sta_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -147,6 +275,9 @@ static void sta_event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG2, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        URL_t mode;
+        strcpy(mode.url, "mode");
+        save_key_values(mode.url,"1");
     }
     ESP_LOGI(TAG2, "Event %d happend" ,event_id);
 }
@@ -193,8 +324,8 @@ void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS,
+            .ssid = ESP_STA_WIFI_SSID,
+            .password = ESP_STA_WIFI_PASS,
             /* Setting a password implies station will connect to all security modes including WEP/WPA.
              * However these modes are deprecated and not advisable to be used. Incase your Access point
              * doesn't support WPA2, these mode can be enabled by commenting below line */
@@ -209,7 +340,7 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
-
+    blink_mode_4();
     ESP_LOGI(TAG2, "wifi_init_sta finished.");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
@@ -221,13 +352,15 @@ void wifi_init_sta(void)
             portMAX_DELAY);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
+     * happened. */ 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG2, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 ESP_STA_WIFI_SSID, ESP_STA_WIFI_PASS);              
+        blink_mode_1();  
+                 
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGE(TAG2, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 ESP_STA_WIFI_SSID, ESP_STA_WIFI_PASS);
                  esp_restart();
     } else {
         ESP_LOGE(TAG2, "UNEXPECTED EVENT");
@@ -247,6 +380,7 @@ static void AP_wifi_event_handler(void *arg, esp_event_base_t event_base,
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(TAG2, "station " MACSTR " join, AID=%d",
                  MAC2STR(event->mac), event->aid);
+        blink_mode_3();         
     }
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
@@ -254,6 +388,7 @@ static void AP_wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG2, "station " MACSTR " leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
     }
+    ESP_LOGI(TAG2, "Event %d happend" ,event_id);
 }
 
 void wifi_init_softap(void)
@@ -273,14 +408,14 @@ void wifi_init_softap(void)
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .channel = EXAMPLE_ESP_WIFI_CHANNEL,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .ssid = ESP_AP_WIFI_SSID,
+            .ssid_len = strlen(ESP_AP_WIFI_SSID),
+            .channel = ESP_WIFI_CHANNEL,
+            .password = ESP_AP_WIFI_PASS,
+            .max_connection = MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK},
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0)
+    if (strlen(ESP_AP_WIFI_PASS) == 0)
     {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
@@ -290,38 +425,13 @@ void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG2, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
+             ESP_AP_WIFI_SSID, ESP_AP_WIFI_PASS, ESP_WIFI_CHANNEL);
+    blink_mode_2();          
 }
 
 // server
-#define STORAGE_NAMESPACE "www"
 static const char *TAG4 = "server";
 QueueHandle_t xQueueHttp;
-
-void http_server_task(void *pvParameters);
-// load key & value from NVS
-esp_err_t load_key_value(char *key, char *value, size_t size)
-{
-    nvs_handle_t my_handle;
-    esp_err_t err;
-
-    // Open
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK)
-        return err;
-
-    // Read
-    size_t _size = size;
-    err = nvs_get_str(my_handle, key, value, &_size);
-    // if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) return err;
-    if (err != ESP_OK)
-        return err;
-
-    // Close
-    nvs_close(my_handle);
-    // return ESP_OK;
-    return err;
-}
 
 int find_values(char *key, char *parameter, char *value)
 {
@@ -350,31 +460,6 @@ int find_values(char *key, char *parameter, char *value)
     ESP_LOGI(TAG4, "key=[%s] value=[%s]", key, value);
     return strlen(value);
 }
-
-// esp_err_t save_key_values(char * key, char * value)
-//{
-//	nvs_handle_t my_handle;
-//	esp_err_t err;
-
-// Open
-//	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-//	if (err != ESP_OK) return err;
-
-// Write
-//	err = nvs_set_str(my_handle, key, value);
-//	if (err != ESP_OK) return err;
-
-// Commit written value.
-// After setting any values, nvs_commit() must be called to ensure changes are written
-// to flash storage. Implementations may write to storage at other times,
-// but this is not guaranteed.
-//	err = nvs_commit(my_handle);
-//	if (err != ESP_OK) return err;
-
-// Close
-//	nvs_close(my_handle);
-//	return ESP_OK;
-//}
 
 // sdcard
 static const char *TAG = "sdcard";
@@ -447,6 +532,9 @@ int search_in_sdcard(void)
 
 void app_main(void)
 {
+    /* Configure the peripheral according to the LED type */
+    configure_led();
+    
     // Initialize SPIFFS for frontend files
     ESP_LOGI(TAG4, "Initializing SPIFFS");
 
@@ -468,6 +556,34 @@ void app_main(void)
     wifi_init_softap();
     /* Get the local IP address */
     ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
+    } else if (CONFIG_WIFI_MODE==2){
+        int Mode=1;
+        URL_t mode;
+        esp_err_t er;
+        strcpy(mode.url, "mode");
+        er = load_key_value(mode.url, mode.parameter, sizeof(mode.parameter));
+        if (er != ESP_OK)
+        {
+            ESP_LOGE(TAG4, "Error (%s) loading to NVS", esp_err_to_name(er));
+        }
+        else
+        {
+            ESP_LOGI(TAG4, "Camera state readed config: %s", mode.parameter);
+            Mode=atoi(mode.parameter);
+        }
+        if (Mode==0){
+            ESP_LOGI(TAG2, "ESP_WIFI_MODE_AP loaded from NVS");
+            save_key_values(mode.url,"1");
+            wifi_init_softap();
+            /* Get the local IP address */
+            ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
+        } else {
+            ESP_LOGI(TAG2, "ESP_WIFI_MODE_STA loaded from NVS");
+            save_key_values(mode.url,"0");
+            wifi_init_sta();
+            /* Get the local IP address */
+            ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info));
+        }
     } else {
     ESP_LOGI(TAG2, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
@@ -759,7 +875,7 @@ void app_main(void)
             //         break;
             // }
             ESP_LOGI(TAG3, "Camera is oFF");
-            vTaskDelay(10000000 / portTICK_RATE_MS);
+            vTaskDelay(10000 / portTICK_RATE_MS);
         }
     }
 }

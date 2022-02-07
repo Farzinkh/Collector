@@ -39,9 +39,12 @@ if not os.path.exists('DATA'):
     os.mkdir("DATA") 
 count = 0
 if not resume: 
-    Lines.remove('TRASH-~1\n')
     Lines.remove('FRONT\n')
     Lines.remove('LINKS.TXT\n')
+    try :
+        Lines.remove('TRASH-~1\n')
+    except:
+        pass
 file1.close()
 try:
     print("downloading...")
