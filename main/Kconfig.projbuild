@@ -1,46 +1,29 @@
 menu "Client Configuration"
     menu "ADC CONFIG"
 
-        choice ADC2_CHANNEL
-            bool "ADC2 Channel Num"
-            default ADC2_CHANNEL_1
+        choice ADC1_CHANNEL
+            bool "ADC1 Channel Num"
+            default ADC1_CHANNEL_1
             help
-                The channel of ADC2 used in this example.
+                The channel of ADC1 used in this example.
 
-            config ADC2_CHANNEL_0
-                bool "ADC2 Channel 0 (GPIO 4)"
-            config ADC2_CHANNEL_1
-                bool "ADC2 Channel 1 (GPIO 0)"
-            config ADC2_CHANNEL_2
-                bool "ADC2 Channel 2 (GPIO 2)"
-            config ADC2_CHANNEL_3
-                bool "ADC2 Channel 3 (GPIO 15)"
-            config ADC2_CHANNEL_4
-                bool "ADC2 Channel 4 (GPIO 13)"
-            config ADC2_CHANNEL_5
-                bool "ADC2 Channel 5 (GPIO 12)"
-            config ADC2_CHANNEL_6
-                bool "ADC2 Channel 6 (GPIO 14)"
-            config ADC2_CHANNEL_7
-                bool "ADC2 Channel 7 (GPIO 27)"
-            config ADC2_CHANNEL_8
-                bool "ADC2 Channel 8 (GPIO 25)"
-            config ADC2_CHANNEL_9
-                bool "ADC2 Channel 9 (GPIO 26)"
+            config ADC1_CHANNEL_0
+                bool "ADC1 Channel 0 (GPIO 4)"
+            config ADC1_CHANNEL_1
+                bool "ADC1 Channel 1 (GPIO 0)"
+            config ADC1_CHANNEL_2
+                bool "ADC1 Channel 2 (GPIO 2)"
+            config ADC1_CHANNEL_3
+                bool "ADC1 Channel 3 (GPIO 15)"
+            
         endchoice
 
-        config ADC2_CHANNEL
+        config ADC1_CHANNEL
             int
-            default 0 if ADC2_CHANNEL_0
-            default 1 if ADC2_CHANNEL_1
-            default 2 if ADC2_CHANNEL_2
-            default 3 if ADC2_CHANNEL_3
-            default 4 if ADC2_CHANNEL_4
-            default 5 if ADC2_CHANNEL_5
-            default 6 if ADC2_CHANNEL_6
-            default 7 if ADC2_CHANNEL_7
-            default 8 if ADC2_CHANNEL_8
-            default 9 if ADC2_CHANNEL_9
+            default 0 if ADC1_CHANNEL_0
+            default 1 if ADC1_CHANNEL_1
+            default 2 if ADC1_CHANNEL_2
+            default 3 if ADC1_CHANNEL_3
 
     endmenu
 
@@ -121,90 +104,6 @@ menu "Client Configuration"
             default 13 if ESP32CAM
             default 15 if ESP32   
     endmenu        
-
-    menu "WIFI CONFIG"
-        choice WIFI_MODE
-            bool "Choose operation mode"
-            default AP
-            help
-                station or accespoint.
-            config AP
-                bool "AP"
-            config STA
-                bool "STA"
-            config SMART
-                bool "SMART"    
-        endchoice
-
-        config WIFI_MODE
-            int 
-            default 1 if STA
-            default 0 if AP
-            default 2 if SMART
-            
-        config ESP_AP_WIFI_SSID
-            string "WiFi SSID FOR ESP"
-            depends on AP || SMART
-            default "myssid"
-            help
-                SSID (network name) for ESP.
-
-        config ESP_AP_WIFI_PASSWORD
-            string "WiFi Password FOR ESP"
-            depends on AP || SMART
-            default "mypassword"
-            help
-                WiFi password (WPA or WPA2) FOR ESP to use min length is 8 .
-        
-        config ESP_STA_WIFI_SSID
-            string "WiFi SSID FOR ROUTER"
-            depends on STA || SMART
-            default "myssid2"
-            help
-                SSID (network name) FOR ROUTER to connect to.
-
-        config ESP_STA_WIFI_PASSWORD
-            string "WiFi Password FOR ROUTER"
-            depends on STA || SMART
-            default "mypassword2"
-            help
-                WiFi password (WPA or WPA2) FOR ROUTER to use min length is 8 .        
-                
-        config ESP_MAXIMUM_RETRY
-            int "Maximum retry"
-            depends on STA || SMART
-            default 5
-            help
-                Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.        
-        config ESP_MAX_STA_CONN
-            int "Maximal STA connections"
-            depends on AP || SMART
-            default 4
-            help
-                Max number of the STA connects to AP.
-        config ESP_WIFI_CHANNEL
-            int "WiFi Channel"
-            range 1 13
-            default 1
-            help
-                WiFi channel (network channel) for the example to use.            
-        config MDNS_HOSTNAME
-            string "mDNS Hostname"
-            default "esp32-server"
-            help
-                The mDNS host name used by the ESP32. 
-        config BLINK_GPIO
-            int "Blink GPIO number"
-            range 0 48
-            default 8 if IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32H2
-            default 18 if IDF_TARGET_ESP32S2
-            default 33 if IDF_TARGET_ESP32
-            default 33
-            help
-                GPIO number (IOxx) to blink on and off or the RMT signal for the addressable LED.
-                Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to blink.
-        
-    endmenu         
     
     menu "HTTP Server Setting"
 

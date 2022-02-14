@@ -25,12 +25,13 @@
 #include "esp_vfs.h"
 #include "http_server.h"
 
+#include "wifi.h"
+
 static const char *TAG = "HTTP_SERVER";
 
 extern QueueHandle_t xQueueHttp;
 /* Scratch buffer size */
 #define SCRATCH_BUFSIZE  8192
-#define STORAGE_NAMESPACE "www"
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
 #define MOUNT_POINT "/sdcard"
 
@@ -41,53 +42,6 @@ struct file_server_data {
     /* Scratch buffer for temporary storage during file transfer */
     char scratch[SCRATCH_BUFSIZE];
 };
-
-esp_err_t save_key_value(char * key, char * value)
-{
-	nvs_handle_t my_handle;
-	esp_err_t err;
-
-	// Open
-	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-	if (err != ESP_OK) return err;
-
-	// Write
-	err = nvs_set_str(my_handle, key, value);
-	if (err != ESP_OK) return err;
-
-	// Commit written value.
-	// After setting any values, nvs_commit() must be called to ensure changes are written
-	// to flash storage. Implementations may write to storage at other times,
-	// but this is not guaranteed.
-	err = nvs_commit(my_handle);
-	if (err != ESP_OK) return err;
-
-	// Close
-	nvs_close(my_handle);
-	return ESP_OK;
-}
-
-esp_err_t load_key_values(char * key, char * value, size_t size)
-{
-	nvs_handle_t my_handle;
-	esp_err_t err;
-
-	// Open
-	err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-	if (err != ESP_OK) return err;
-
-	// Read
-	size_t _size = size;
-	err = nvs_get_str(my_handle, key, value, &_size);
-	ESP_LOGD(TAG, "nvs_get_str err=%d", err);
-	if (err != ESP_OK) return err;
-	ESP_LOGD(TAG, "err=%d key=[%s] value=[%s] _size=%d", err, key, value, _size);
-
-	// Close
-	nvs_close(my_handle);
-	//return ESP_OK;
-	return err;
-}
 
 int find_value(char * key, char * parameter, char * value) 
 {
@@ -289,7 +243,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
 	strcpy(key, "framesize");
 	char radio[16] = {0};
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -336,7 +290,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	httpd_resp_sendstr_chunk(req, "<br>");
 	httpd_resp_sendstr_chunk(req, "<input type=\"submit\" name=\"submit\" value=\"framesize\">");
 
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -355,7 +309,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	
 	strcpy(key, "pixformat");
 	char radio2[16] = {0};
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -387,7 +341,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	httpd_resp_sendstr_chunk(req, "<br>");
 	httpd_resp_sendstr_chunk(req, "<input type=\"submit\" name=\"submit\" value=\"pixformat\">");
 
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -398,7 +352,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	
 	strcpy(key, "picspeed");
 	char radio3[16] = {0};
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -425,7 +379,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	httpd_resp_sendstr_chunk(req, "<br>");
 	httpd_resp_sendstr_chunk(req, "<input type=\"submit\" name=\"submit\" value=\"picspeed\">");
 
-	err = load_key_values(key, parameter, sizeof(parameter));
+	err = load_key_value(key, parameter, sizeof(parameter));
 	ESP_LOGD(TAG, "%s=%d", key, err);
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
@@ -436,7 +390,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	
 	httpd_resp_sendstr_chunk(req, "</form><br>");
 	
-	err = load_key_values("camera", parameter, sizeof(parameter));
+	err = load_key_value("camera", parameter, sizeof(parameter));
 	if (err == ESP_OK) {
 		ESP_LOGD(TAG, "parameter=[%s]", parameter);
 		// save key & value to NVS		
@@ -806,7 +760,7 @@ void http_server_task(void *pvParameters)
 				
 				char parameter[128];
 				char state[2];
-				esp_err_t err = load_key_values(urlBuf.url, parameter, sizeof(parameter));
+				esp_err_t err = load_key_value(urlBuf.url, parameter, sizeof(parameter));
 				if (err == ESP_OK) {
 					ESP_LOGD(TAG, "parameter=[%s]", parameter);
 					// save key & value to NVS		
