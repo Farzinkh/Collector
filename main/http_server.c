@@ -33,7 +33,7 @@ extern QueueHandle_t xQueueHttp;
 /* Scratch buffer size */
 #define SCRATCH_BUFSIZE  8192
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + CONFIG_SPIFFS_OBJ_NAME_LEN)
-#define MOUNT_POINT "/sdcard"
+#define MOUNT_POINT CONFIG_MEDIA_DIR
 
 struct file_server_data {
     /* Base path of file storage */
@@ -236,7 +236,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
 	// Send HTML header
 	httpd_resp_sendstr_chunk(req, "<!DOCTYPE html><html>");
-	Text2Html(req, CONFIG_MEDIA_DIR"HEAD.htm");
+	Text2Html(req, MOUNT_POINT"/HEAD.htm");
 
 	httpd_resp_sendstr_chunk(req, "<body>");
 	httpd_resp_sendstr_chunk(req, "<h1>Client server</h1>");
@@ -406,7 +406,8 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	uint32_t total,free,available;
     available=SD_getFreeSpace(&total,&free);   
     if(available==ESP_FAIL){
-        ESP_LOGE(TAG,"Faild to read free space");
+        ESP_LOGE(TAG,"Faild to read free space or sd card is not available");
+        httpd_resp_sendstr_chunk(req, "<h5>Faild to read free space or sd card is not available</h5>");
     } else {
         char full[255]="";
         char availables[11];
@@ -426,7 +427,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	httpd_resp_sendstr_chunk(req, "</form><br>");
 
 	/* Send Image to HTML file */
-	Image2Html(req, CONFIG_MEDIA_DIR"ESP-LOGO.txt", "png");
+	Image2Html(req, MOUNT_POINT"/ESP-LOGO.txt", "png");
 
 	/* Send remaining chunk of HTML file to complete it */
 	httpd_resp_sendstr_chunk(req, "</body></html>");

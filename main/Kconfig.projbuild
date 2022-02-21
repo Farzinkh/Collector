@@ -115,7 +115,7 @@ menu "Client Configuration"
 				
         choice MEDIA_DIR
             bool "sdcard or flash"
-            default sdcard
+            default flash
             help
                 choose where you place frontend filed (front directory).
 
@@ -128,7 +128,7 @@ menu "Client Configuration"
         config MEDIA_DIR
             string  
             default "/sdcard/front/" if sdcard
-            default "/front/" if flash		
+            default "/front" if flash		
 
 	endmenu
                 

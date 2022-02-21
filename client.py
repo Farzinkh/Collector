@@ -1,4 +1,3 @@
-from tkinter import EXCEPTION
 from tqdm import tqdm
 import requests
 import argparse
@@ -39,9 +38,9 @@ if not os.path.exists('DATA'):
     os.mkdir("DATA") 
 count = 0
 if not resume: 
-    Lines.remove('FRONT\n')
     Lines.remove('LINKS.TXT\n')
     try :
+        Lines.remove('FRONT\n')
         Lines.remove('TRASH-~1\n')
     except:
         pass
