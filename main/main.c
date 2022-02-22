@@ -242,27 +242,34 @@ void app_main(void)
     bool wifi_is_on = true;
     get_rssi();
     // Initialize SPIFFS for frontend files
-    ESP_LOGI(TAG4, "Initializing SPIFFS");
-    esp_vfs_spiffs_conf_t conf = {
-      .base_path = CONFIG_MEDIA_DIR,
-      .partition_label = NULL,
-      .max_files = 5,
-      .format_if_mount_failed = false
-    };
+    //ESP_LOGI(TAG4, "Initializing SPIFFS");
+    //esp_vfs_spiffs_conf_t conf = {
+    //  .base_path = CONFIG_MEDIA_DIR,
+    //  .partition_label = "storage",
+    //  .max_files = 5,
+    //  .format_if_mount_failed = false
+    //};
     
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    //esp_err_t ret = esp_vfs_spiffs_register(&conf);
 
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            ESP_LOGE(TAG4, "Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(TAG4, "Failed to find SPIFFS partition");
-        } else {
-            ESP_LOGE(TAG4, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-        }
-        return;
-    }
-    search_in_spiffs();
+    //if (ret != ESP_OK) {
+    //    if (ret == ESP_FAIL) {
+    //        ESP_LOGE(TAG4, "Failed to mount or format filesystem");
+    //    } else if (ret == ESP_ERR_NOT_FOUND) {
+    //        ESP_LOGE(TAG4, "Failed to find SPIFFS partition");
+    //    } else {
+    //        ESP_LOGE(TAG4, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+    //    }
+    //    return;
+    //}
+    //search_in_spiffs();
+    //ESP_LOGI(TAG4, "Uninitializing SPIFFS");
+    //ret = esp_vfs_spiffs_unregister("storage");
+    //{
+    //    if (ret != ESP_OK) {
+    //        ESP_LOGE(TAG4, "Already unregistered");
+    //    }
+    //}
     // Create Queue
     xQueueHttp = xQueueCreate(10, sizeof(URL_t));
     configASSERT(xQueueHttp);
