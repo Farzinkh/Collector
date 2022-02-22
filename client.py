@@ -28,12 +28,14 @@ def load_links(resume):
         try:
             Lines.remove('LINKS.TXT\n')
         except:
-            raise Exception("\nSD card not mount!!")
-        try :
-            Lines.remove('FRONT\n')
-            Lines.remove('TRASH-~1\n')
-        except:
-            pass
+            try:
+                Lines.remove('links.txt\n')
+            except:    
+                raise Exception("\nSD card not mount!!")
+        for l in Lines:
+            if l[-5:] !=".jpg\n" and  l[-5:] !=".JPG\n":
+                Lines.remove(l)
+
         if not os.path.exists('DATA'):
             os.mkdir("DATA") 
         else:

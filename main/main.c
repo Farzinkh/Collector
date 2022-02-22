@@ -1,12 +1,8 @@
-// ADC
 #include <stdio.h>
 #include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "driver/gpio.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 #include "esp_system.h"
 
 // SD CARD
@@ -36,6 +32,9 @@
 
 //spiffs (custom partition mount)
 #include "esp_spiffs.h"
+
+// TIMER
+#include "driver/timer.h"
 
 // sleep
 //#include "esp_sleep.h"
@@ -210,66 +209,195 @@ int search_in_spiffs(void)
 }
 
 
-// adc
-//#define ADC2_CHANNEL    CONFIG_ADC2_CHANNEL
-//#if CONFIG_IDF_TARGET_ESP32
-//#include "driver/sdmmc_host.h"
-// static const adc_bits_width_t width = ADC_WIDTH_BIT_12;
-//#elif CONFIG_IDF_TARGET_ESP32S2
-// static const adc_bits_width_t width = ADC_WIDTH_BIT_13;
-//#endif
-// static esp_adc_cal_characteristics_t *adc_chars;
-// static const adc_atten_t atten = ADC_ATTEN_DB_11;
-// static const adc_unit_t unit = ADC_UNIT_1;
+// TIMER
+#define TIMER_DIVIDER         (16)  //  Hardware timer clock divider
+#define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 
-// static void print_char_val_type(esp_adc_cal_value_t val_type)
-//{
-//     if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-//         printf("Characterized using Two Point Value\n");
-//     } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-//         printf("Characterized using eFuse Vref\n");
-//     } else {
-//         printf("Characterized using Default Vref\n");
-//     }
-// }
+typedef struct {
+    int timer_group;
+    int timer_idx;
+    int alarm_interval;
+    bool auto_reload;
+} example_timer_info_t;
 
+typedef struct {
+    example_timer_info_t info;
+    uint64_t timer_counter_value;
+} example_timer_event_t;
+
+static xQueueHandle s_timer_queue;
+
+static void inline print_timer_counter(uint64_t counter_value)
+{
+    ESP_LOGD(TAG,"Counter: 0x%08x%08x\r", (uint32_t) (counter_value >> 32),
+           (uint32_t) (counter_value));
+    ESP_LOGI(TAG,"Time   : %.8f s\r\n", (double) counter_value / TIMER_SCALE);
+}
+
+static bool IRAM_ATTR timer_group_isr_callback(void *args)
+{
+    BaseType_t high_task_awoken = pdFALSE;
+    example_timer_info_t *info = (example_timer_info_t *) args;
+
+    uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(info->timer_group, info->timer_idx);
+
+    /* Prepare basic event data that will be then sent back to task */
+    example_timer_event_t evt = {
+        .info.timer_group = info->timer_group,
+        .info.timer_idx = info->timer_idx,
+        .info.auto_reload = info->auto_reload,
+        .info.alarm_interval = info->alarm_interval,
+        .timer_counter_value = timer_counter_value
+    };
+
+    if (!info->auto_reload) {
+        timer_counter_value += info->alarm_interval * TIMER_SCALE;
+        timer_group_set_alarm_value_in_isr(info->timer_group, info->timer_idx, timer_counter_value);
+    }
+
+    /* Now just send the event data back to the main program task */
+    xQueueSendFromISR(s_timer_queue, &evt, &high_task_awoken);
+
+    return high_task_awoken == pdTRUE; // return whether we need to yield at the end of ISR
+}
+
+static void example_tg_timer_init(int group, int timer, bool auto_reload, int timer_interval_sec)
+{
+    /* Select and initialize basic parameters of the timer */
+    timer_config_t config = {
+        .divider = TIMER_DIVIDER,
+        .counter_dir = TIMER_COUNT_UP,
+        .counter_en = TIMER_PAUSE,
+        .alarm_en = TIMER_ALARM_EN,
+        .auto_reload = auto_reload,
+    }; // default clock source is APB
+    timer_init(group, timer, &config);
+
+    /* Timer's counter will initially start from value below.
+       Also, if auto_reload is set, this value will be automatically reload on alarm */
+    timer_set_counter_value(group, timer, 0);
+
+    /* Configure the alarm value and the interrupt on alarm. */
+    timer_set_alarm_value(group, timer, timer_interval_sec * TIMER_SCALE);
+    timer_enable_intr(group, timer);
+
+    example_timer_info_t *timer_info = calloc(1, sizeof(example_timer_info_t));
+    timer_info->timer_group = group;
+    timer_info->timer_idx = timer;
+    timer_info->auto_reload = auto_reload;
+    timer_info->alarm_interval = timer_interval_sec;
+    timer_isr_callback_add(group, timer, timer_group_isr_callback, timer_info, 0);
+
+    timer_start(group, timer);
+}
+
+char camera_state[16] = "1";
+void camera_maneger(void *param)
+{
+    // time
+    time_t now;
+    struct tm *tm;
+    char filename[255];
+    char fullname[255];
+    while (1)
+    {
+        example_timer_event_t evt;
+        xQueueReceive(s_timer_queue, &evt, portMAX_DELAY);
+        
+        if (strcmp(camera_state, "1") == 0)
+        {
+            ESP_LOGI(TAG3, "Taking picture...");
+            camera_fb_t *pic = esp_camera_fb_get();
+            if (!pic)
+            {
+                ESP_LOGE(TAG3, "Camera capture failed");
+                break;
+            }
+            // use pic->buf to access the image
+            ESP_LOGI(TAG3, "Picture taken! Its size was: %zu bytes", pic->len);
+
+            // Use POSIX and C standard library functions to work with files.
+            // First create a file.
+            ESP_LOGI(TAG, "Opening file");
+
+            now = time(0);        // get current time
+            tm = localtime(&now); // get structure
+
+            // fmt2jpg(pic->buf, pic->len, pic->width, pic->height, pic->format, quality, outframe.buf, outframe.len);
+            if (camera_config.pixel_format == 3)
+            {
+                memset(fullname, 0, sizeof(fullname));
+                sprintf(filename, "/%02d%02d%02d%02d.jpg", tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+                strcat(fullname, MOUNT_POINT);
+                strcat(fullname, filename);
+                FILE *f = fopen(fullname, "wb");
+                if (f == NULL)
+                {
+                    ESP_LOGE(TAG, "Failed to open file for writing");
+                    ESP_LOGE(TAG, "%s", fullname);
+                    return;
+                }
+                fwrite(pic->buf, 1, pic->len, f);
+                fclose(f);
+            } else {
+                memset(fullname, 0, sizeof(fullname));
+                sprintf(filename, "/%02d%02d%02d%02d.raw", tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+                strcat(fullname, MOUNT_POINT);
+                strcat(fullname, filename);
+                FILE *f = fopen(fullname, "wb");
+                if (f == NULL)
+                {
+                    ESP_LOGE(TAG, "Failed to open file for writing");
+                    ESP_LOGE(TAG, "%s", fullname);
+                    return;
+                }
+                fwrite(pic->buf, 1, pic->len, f);
+                fclose(f);
+
+            }
+            ESP_LOGI(TAG, "File written");
+
+            // release buffer
+            esp_camera_fb_return(pic);
+
+        }
+        else
+        {
+            ESP_LOGI(TAG3, "Camera is oFF");
+
+        }
+    }
+    vTaskDelete(NULL);
+}
 void app_main(void)
 {    
     // start wifi
     tcpip_adapter_ip_info_t ip_info;
     wifi_init();
     ip_info=get_ip();
-    bool wifi_is_on = true;
     get_rssi();
     // Initialize SPIFFS for frontend files
-    //ESP_LOGI(TAG4, "Initializing SPIFFS");
-    //esp_vfs_spiffs_conf_t conf = {
-    //  .base_path = CONFIG_MEDIA_DIR,
-    //  .partition_label = "storage",
-    //  .max_files = 5,
-    //  .format_if_mount_failed = false
-    //};
+    ESP_LOGI(TAG4, "Initializing SPIFFS");
+    esp_vfs_spiffs_conf_t conf = {
+      .base_path = CONFIG_MEDIA_DIR,
+      .partition_label = "storage",
+      .max_files = 5,
+      .format_if_mount_failed = false
+    };
     
-    //esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
 
-    //if (ret != ESP_OK) {
-    //    if (ret == ESP_FAIL) {
-    //        ESP_LOGE(TAG4, "Failed to mount or format filesystem");
-    //    } else if (ret == ESP_ERR_NOT_FOUND) {
-    //        ESP_LOGE(TAG4, "Failed to find SPIFFS partition");
-    //    } else {
-    //        ESP_LOGE(TAG4, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-    //    }
-    //    return;
-    //}
-    //search_in_spiffs();
-    //ESP_LOGI(TAG4, "Uninitializing SPIFFS");
-    //ret = esp_vfs_spiffs_unregister("storage");
-    //{
-    //    if (ret != ESP_OK) {
-    //        ESP_LOGE(TAG4, "Already unregistered");
-    //    }
-    //}
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG4, "Failed to mount or format filesystem");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(TAG4, "Failed to find SPIFFS partition");
+        } else {
+            ESP_LOGE(TAG4, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+        }
+        return;
+    }
+    search_in_spiffs();
     // Create Queue
     xQueueHttp = xQueueCreate(10, sizeof(URL_t));
     configASSERT(xQueueHttp);
@@ -287,7 +415,6 @@ void app_main(void)
     char val[16] = {0};
     char val2[16] = {0};
     char val3[16] = {0};
-    char camera_state[16] = "1";
     // load key & value from NVS to check changes
     strcpy(urlBuf.url, "framesize");
     r = load_key_value(urlBuf.url, urlBuf.parameter, sizeof(urlBuf.parameter));
@@ -341,32 +468,6 @@ void app_main(void)
     {
         return;
     }
-
-    // init adc
-    // uint8_t output_data=0;
-    // int     read_raw;
-    // gpio_num_t adc_gpio_num;
-
-    // r = adc2_pad_get_io_num( ADC2_CHANNEL, &adc_gpio_num );
-    // assert( r == ESP_OK );
-
-    // ADC refrence
-    // int DEFAULT_VREF=adc2_vref_to_gpio(adc_gpio_num);         //Use adc2_vref_to_gpio() to obtain a better estimate
-
-    // Characterize ADC
-    // adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    // esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, width, DEFAULT_VREF, adc_chars);
-    // print_char_val_type(val_type);
-
-    // printf("ADC2 channel %d @ GPIO %d.\n", ADC2_CHANNEL, adc_gpio_num);
-
-    // be sure to do the init before using adc2.
-    // printf("adc2_init...\n");
-    // adc2_config_channel_atten( ADC2_CHANNEL, ADC_ATTEN_11db );
-
-    // vTaskDelay(2 * portTICK_PERIOD_MS);
-
-    // printf("start conversion.\n");
 
     // SDcard
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -426,138 +527,11 @@ void app_main(void)
     // Card has been initialized, print its properties
     // search_in_sdcard(); // list files
     sdmmc_card_print_info(stdout, card);
-
-    // time
-    time_t now;
-    struct tm *tm;
-    char filename[255];
-    char fullname[255];
-    // sleep config
-    /* Configure the button GPIO as input, enable wakeup */
-    // const int button_gpio_num = BUTTON_GPIO_NUM_DEFAULT;
-    // const int wakeup_level = BUTTON_WAKEUP_LEVEL_DEFAULT;
-    // gpio_config_t config = {
-    //         .pin_bit_mask = BIT64(button_gpio_num),
-    //         .mode = GPIO_MODE_INPUT
-    // };
-    // ESP_ERROR_CHECK(gpio_config(&config));
-    // gpio_wakeup_enable(button_gpio_num,
-    //         wakeup_level == 0 ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
-    // gpio_set_level(button_gpio_num,0);
-    while (1)
-    {
-        if ((wifi_is_on == true) & (strcmp(camera_state, "1") == 0))
-        {
-            ESP_LOGI(TAG3, "Taking picture...");
-            camera_fb_t *pic = esp_camera_fb_get();
-            if (!pic)
-            {
-                ESP_LOGE(TAG3, "Camera capture failed");
-                break;
-            }
-            // use pic->buf to access the image
-            ESP_LOGI(TAG3, "Picture taken! Its size was: %zu bytes", pic->len);
-
-            // Use POSIX and C standard library functions to work with files.
-            // First create a file.
-            ESP_LOGI(TAG, "Opening file");
-
-            now = time(0);        // get current time
-            tm = localtime(&now); // get structure
-
-            // fmt2jpg(pic->buf, pic->len, pic->width, pic->height, pic->format, quality, outframe.buf, outframe.len);
-            if (camera_config.pixel_format == 3)
-            {
-                memset(fullname, 0, sizeof(fullname));
-                sprintf(filename, "/%02d%02d%02d%02d.jpg", tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
-                strcat(fullname, MOUNT_POINT);
-                strcat(fullname, filename);
-                FILE *f = fopen(fullname, "wb");
-                if (f == NULL)
-                {
-                    ESP_LOGE(TAG, "Failed to open file for writing");
-                    ESP_LOGE(TAG, "%s", fullname);
-                    return;
-                }
-                fwrite(pic->buf, 1, pic->len, f);
-                fclose(f);
-            } else {
-                memset(fullname, 0, sizeof(fullname));
-                sprintf(filename, "/%02d%02d%02d%02d.raw", tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
-                strcat(fullname, MOUNT_POINT);
-                strcat(fullname, filename);
-                FILE *f = fopen(fullname, "wb");
-                if (f == NULL)
-                {
-                    ESP_LOGE(TAG, "Failed to open file for writing");
-                    ESP_LOGE(TAG, "%s", fullname);
-                    return;
-                }
-                fwrite(pic->buf, 1, pic->len, f);
-                fclose(f);
-
-            }
-            ESP_LOGI(TAG, "File written");
-
-            // release buffer
-            esp_camera_fb_return(pic);
-            vTaskDelay(PICSPEED / portTICK_RATE_MS);
-        }
-        else
-        {
-
-            // adc
-            // r = adc2_get_raw( ADC2_CHANNEL, width, &read_raw);
-            // uint32_t voltage = esp_adc_cal_raw_to_voltage(read_raw, adc_chars);
-            // if ( r == ESP_OK ) {
-            //     //printf("%d: \n", read_raw );
-            //     printf("Raw: %d\tVoltage: %dmV\n", read_raw, voltage);
-            // } else if ( r == ESP_ERR_INVALID_STATE ) {
-            //     printf("%s: ADC2 not initialized yet.\n", esp_err_to_name(r));
-            // } else if ( r == ESP_ERR_TIMEOUT ) {
-            //     //This can not happen in this example. But if WiFi is in use, such error code could be returned.
-            //     printf("%s: ADC2 is in use by Wi-Fi.\n", esp_err_to_name(r));
-            // } else {
-            //     printf("%s\n", esp_err_to_name(r));
-            // }
-
-            // vTaskDelay( 2 * portTICK_PERIOD_MS );
-
-            // Entering light sleep
-            // esp_sleep_enable_timer_wakeup(10000000);
-            // esp_sleep_enable_gpio_wakeup();
-            /* Wait until GPIO goes high */
-            // if (gpio_get_level(button_gpio_num) == wakeup_level) {
-            //     ESP_LOGI(TAG4,"Waiting for GPIO %d to go high...\n", button_gpio_num);
-            //     do {
-            //         vTaskDelay(pdMS_TO_TICKS(10));
-            //     } while (gpio_get_level(button_gpio_num) == wakeup_level);
-            // }
-
-            /* Get timestamp before entering sleep */
-            // int64_t t_before_us = esp_timer_get_time();
-            /* Enter sleep mode */
-            // esp_light_sleep_start();
-            // int64_t t_after_us = esp_timer_get_time();
-            // ESP_LOGI(TAG3, "Camera is oFF slept for %lld ms",(t_after_us - t_before_us) / 1000);
-            /* Determine wake up reason */
-            // switch (esp_sleep_get_wakeup_cause()) {
-            //     case ESP_SLEEP_WAKEUP_TIMER:
-            //         break;
-            //     case ESP_SLEEP_WAKEUP_GPIO:
-            //         r = save_key_values("camera", "1");
-            //		if (r != ESP_OK) {
-            //			ESP_LOGE(TAG4, "Error (%s) saving to NVS", esp_err_to_name(r));
-            //		} else {
-            //		    ESP_LOGI(TAG3, "Exiting from sleep");
-            //		}
-            //		esp_restart();
-            //         break;
-            //     default:
-            //         break;
-            // }
-            ESP_LOGI(TAG3, "Camera is oFF");
-            vTaskDelay(10000 / portTICK_RATE_MS);
-        }
-    }
+    
+    // Init timer
+    check_time();
+	s_timer_queue = xQueueCreate(10, sizeof(example_timer_event_t));
+	example_tg_timer_init(TIMER_GROUP_0, TIMER_0, true, (int) PICSPEED/1000);
+	xTaskCreate(camera_maneger, "camera_maneger", 1024*5, NULL, 3, NULL);
+	
 }

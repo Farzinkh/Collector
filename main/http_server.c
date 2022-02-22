@@ -445,14 +445,14 @@ int format_files_in_sdcard(void) {
 	struct stat st;
     ESP_LOGI(TAG, "formating");
 
-    d = opendir(MOUNT_POINT);
+    d = opendir("/sdcard");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
-        if (strcmp(dir->d_name, "/FRONT") == 0) {
+        if (strcmp(dir->d_name, "/FRONT") == 0 || strcmp(dir->d_name, "/front") == 0) {
         
 		} else {
         strcpy( full,"");
-        strcat(full,MOUNT_POINT);
+        strcat(full,"/sdcard");
         strcat(full,"/");
 		strcat(full,dir->d_name);
 		if (stat(full, &st) == 0) {
@@ -472,17 +472,17 @@ int list_files_in_sdcard(void) {
     DIR *d;
     struct dirent *dir;
     struct stat st;
-    if (stat(MOUNT_POINT"/links.txt", &st) == 0) {
+    if (stat("/sdcard/links.txt", &st) == 0) {
         // Delete it if it exists
-        unlink(MOUNT_POINT"/links.txt");
+        unlink("/sdcard/links.txt");
     }
-    FILE* f = fopen(MOUNT_POINT"/links.txt", "w");
+    FILE* f = fopen("/sdcard/links.txt", "w");
 	if (f == NULL) {
 		ESP_LOGE(TAG, "Failed to open file for writing");
 		return(0);
 	}
     ESP_LOGI(TAG, "Listing files");
-    d = opendir(MOUNT_POINT);
+    d = opendir("/sdcard");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
         fprintf(f, "%s\n", dir->d_name);
@@ -562,12 +562,12 @@ static esp_err_t download_database(httpd_req_t *req)
     //    return http_resp_dir_html(req, filepath);
     //}
 	char full[255]="";
-	strcat(full,MOUNT_POINT);
+	strcat(full,"/sdcard");
 	strcat(full,filepath);
 	
 	if (strcmp(filepath, "/links") == 0) {
 	list_files_in_sdcard();
-	strcpy( full, MOUNT_POINT"/links.txt");
+	strcpy( full, "/sdcard/links.txt");
 	} else {
     if (stat(full, &file_stat) == -1) {
         /* If file not present on SPIFFS check if URI
