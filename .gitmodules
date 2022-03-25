@@ -1,0 +1,3 @@
+[submodule "components/wifi"]
+	path = components/wifi
+	url = https://github.com/Farzinkh/wifi

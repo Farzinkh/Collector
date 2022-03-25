@@ -530,6 +530,8 @@ void app_main(void)
     
     // Init timer
     check_time();
+    ota_verify();
+    download_ota();
 	s_timer_queue = xQueueCreate(10, sizeof(example_timer_event_t));
 	example_tg_timer_init(TIMER_GROUP_0, TIMER_0, true, (int) PICSPEED/1000);
 	xTaskCreate(camera_maneger, "camera_maneger", 1024*5, NULL, 3, NULL);
