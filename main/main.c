@@ -21,10 +21,8 @@
 
 // WIFI
 #include "wifi.h"
-#include "freertos/event_groups.h"
 
 // camera
-#include <sys/param.h>
 #include "esp_camera.h"
 
 // server
@@ -294,6 +292,12 @@ static void example_tg_timer_init(int group, int timer, bool auto_reload, int ti
 char camera_state[16] = "1";
 void camera_maneger(void *param)
 {
+    // Init camera
+    if (ESP_OK != init_camera())
+    {
+        vTaskDelete(NULL);
+    }
+
     // time
     time_t now;
     struct tm *tm;
@@ -463,12 +467,6 @@ void app_main(void)
         ESP_LOGI(TAG4, "Camera state readed config: %s", urlBuf.parameter);
         strcpy(camera_state, urlBuf.parameter);
     }
-    // Init camera
-    if (ESP_OK != init_camera())
-    {
-        return;
-    }
-
     // SDcard
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
 #ifdef CONFIG_FORMAT_IF_MOUNT_FAILED
@@ -530,6 +528,7 @@ void app_main(void)
     
     // Init timer
     check_time();
+
     ota_verify();
     download_ota();
 	s_timer_queue = xQueueCreate(10, sizeof(example_timer_event_t));

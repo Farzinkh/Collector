@@ -7,4 +7,4 @@ otadata,  data, ota,      ,        8k,
 phy_init, data, phy,      ,        4k,
 ota_0,    app,  ota_0,    ,        1500K,
 ota_1,    app,  ota_1,    ,        1500K,
-coredump, data, coredump, ,        64K
+coredump, data, coredump, ,        100K
