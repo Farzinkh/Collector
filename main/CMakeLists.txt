@@ -2,8 +2,8 @@
 set(COMPONENT_REQUIRES )
 set(COMPONENT_PRIV_REQUIRES )
 
-set(COMPONENT_SRCS "http_server.c" "main.c")
-set(COMPONENT_ADD_INCLUDEDIRS "")
+set(COMPONENT_SRCS "http_server.c" "sd_card" "ov2602" "main.c")
+set(COMPONENT_ADD_INCLUDEDIRS "./include")
 
 register_component()
 

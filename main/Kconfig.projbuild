@@ -155,7 +155,12 @@ menu "Client Configuration"
             default QVGA
             help
                 Do not use sizes above QVGA when not JPEG.
-
+            config 96x96
+                bool "96x96"
+            config QQVGA
+                bool "QQVGA 160x120" 
+            config 240x240
+                bool "240X240"              
             config QVGA
                 bool "QVGA 320x240"
             config CIF
@@ -174,6 +179,9 @@ menu "Client Configuration"
 
         config FRAMESIZE
             int 
+            default 0 if 96x96
+            default 1 if QQVGA
+            default 4 if 240X240
             default 5 if QVGA
             default 6 if CIF 
             default 7 if HVGA
@@ -203,7 +211,7 @@ menu "Client Configuration"
             default 3 if JPEG
             default 2 if GRAYSCALE    
             default 5 if RAW
-            default 1 if RGB565  
+            default 0 if RGB565  
             
         choice PICSPEED
             bool "Camera speed"

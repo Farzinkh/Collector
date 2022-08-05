@@ -252,6 +252,21 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
 	httpd_resp_sendstr_chunk(req, "<h2>FRAMESIZE</h2>");
 	httpd_resp_sendstr_chunk(req, "<form method=\"post\" action=\"/post\">");
+	if (strcmp(radio, "0") == 0) {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"0\" checked=\"checked\">96x96");
+	} else {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"0\">96x96");
+	}
+	if (strcmp(radio, "1") == 0) {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"1\" checked=\"checked\">QQVGA");
+	} else {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"1\">QQVGA");
+	}
+	if (strcmp(radio, "4") == 0) {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"4\" checked=\"checked\">240x240");
+	} else {
+		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"4\">240x240");
+	}
 	if (strcmp(radio, "5") == 0) {
 		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio\" value=\"5\" checked=\"checked\">QVGA");
 	} else {
@@ -299,13 +314,16 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 		httpd_resp_sendstr_chunk(req, parameter);
 	}
 	httpd_resp_sendstr_chunk(req, "</form><br>");
-	httpd_resp_sendstr_chunk(req, "<h3>QVGA 320x240</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>CIF 400x296</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>HVGA 480x320</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>VGA 640x480</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>SVGA 800x600</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>HD 1280x720</h3>");
-	httpd_resp_sendstr_chunk(req, "<h3>UXGA 1600x1200</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>       96x96</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>QQVGA  160x120</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>       240x240</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>QVGA   320x240</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>CIF    400x296</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>HVGA   480x320</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>VGA    640x480</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>SVGA   800x600</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>HD     1280x720</h3>");
+	httpd_resp_sendstr_chunk(req, "<h3>UXGA   1600x1200</h3>");
 	
 	strcpy(key, "pixformat");
 	char radio2[16] = {0};
@@ -328,7 +346,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 	} else {
 		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio2\" value=\"2\">GRAYSCALE");
 	}
-	if (strcmp(radio2, "1") == 0) {
+	if (strcmp(radio2, "0") == 0) {
 		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio2\" value=\"1\" checked=\"checked\">RGB565");
 	} else {
 		httpd_resp_sendstr_chunk(req, "<input type=\"radio\" name=\"radio2\" value=\"1\">RGB565");

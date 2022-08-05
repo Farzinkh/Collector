@@ -2,8 +2,8 @@
 # in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.5)
 
-set(EXTRA_COMPONENT_DIRS /home/farzin/esp/esp32-camera) #add for esp32cam
-add_compile_options(-fdiagnostics-color=always)
+# set(EXTRA_COMPONENT_DIRS /home/farzin/esp/tflite-micro-esp-examples/components) #add for tflite 
+# add_compile_options(-fdiagnostics-color=always)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(collector)
