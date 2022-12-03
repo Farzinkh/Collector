@@ -1,0 +1,8 @@
+build/
+test/
+DATA/
+links.txt
+.devcontainer/
+.vscode/
+sdkconfig
+sdkconfig.old
